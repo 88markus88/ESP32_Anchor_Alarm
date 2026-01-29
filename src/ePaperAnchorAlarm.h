@@ -1,5 +1,5 @@
-#ifndef _ePaperAnchroAlarm_H
-#define _ePaperAnchroAlarm_H
+#ifndef _ePaperAnchorAlarm_H
+#define _ePaperAnchorAlarm_H
 
 // Screen parameters
 #include "screenParameters.h"
@@ -8,4 +8,4 @@
 
 /************************** forward declarations *************************/
 
-#endif // _ePaperAnchroAlarm_H
+#endif // _ePaperAnchorAlarm_H

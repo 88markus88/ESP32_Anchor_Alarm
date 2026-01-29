@@ -13,6 +13,14 @@ extern RTC_DATA_ATTR uint32_t bgndColor;
 //*************** global global variables ******************/
 extern char outstring[maxLOG_STRING_LEN];
 
+enum mainLoopMode {
+  MODE_STARTED = 0,
+  MODE_SELECTLINE = 1,
+  MODE_CHANGEPARAM = 2,
+  MODE_RUNNING = 3,
+  MODE_ALARN = 4
+};
+
 struct measurementData
 {
   // admin stuff
@@ -24,14 +32,27 @@ struct measurementData
   struct timeval lastMeasurementTimestamp;  // time value when last measurement has been taken
   struct timeval last2MeasurementTimestamp;  // time value when measurement before last has been taken
   float actSecondsSinceLastMeasurement;     // seconds elapsed since last measurement, before last deep sleep
-
+  bool applyInversion;   // if true, white on black. otherwise black on white
+  
   bool buttonPressed;    // remembers if button has been pressed to acknowledge an alert
   bool alertON;          // remembers if an alert has been triggered
+  mainLoopMode currentMode; // current main loop mode
 
   int32_t targetMeasurementIntervalSec;    // sleep time target in seconds, controls the measurement
   int32_t lastTargetSleeptime;             // last target standard sleep time in seconds
   int64_t lastActualSleeptimeAfterMeasUsec;         // this is the number in usec actually used to set the sleep timer after last measurement
   int64_t lastActualSleeptimeNotMeasUsec;         // this is the number in usec actually used to set the sleep timer when no measurement
+
+  float anchorBearingDeg = 45;        // anchor angle in degrees
+  float anchorDistanceM = 23;       // anchor distance in meters
+  int32_t alertCount = 3;           // number of position deviations before alarm is triggered
+  float alarmDistanceM = 40;        // alarm distance in meters
+
+  double anchorLat;               // anchor latitude
+  double anchorLon;               // anchor longitude
+
+  double actLat;                  // actual latitude
+  double actLon;                  // actual longitude
 
   float batteryVoltage;
   float batteryPercent;
@@ -39,6 +60,18 @@ struct measurementData
 extern RTC_DATA_ATTR measurementData wData;
 
 //*************** function prototypes ******************/
+void testDisplay();
+void testDisplayWeAct();
+void initDisplay(int startCounter, int fullInterval); // start display
+void endDisplay(int mode);                  // power off display if mode =0 else hibernate
+void logOut(int logLevel, char* str);
+void buzzer(uint16_t number, uint16_t duration, uint16_t interval);
+//void getInputMainScreen();
+void drawInputMainScreen();
+void drawInputHeader();
+void drawInputData();
+void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
 
+boolean gpsTest();
 
 #endif // _global_H

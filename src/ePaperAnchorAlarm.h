@@ -5,6 +5,7 @@
 #include "screenParameters.h"
 
 // global stuff (variables, function prototypes)
+#define SECONDS (1000 * 1000)   // 1 second = 1 Mio microseconds
 
 /************************** forward declarations *************************/
 

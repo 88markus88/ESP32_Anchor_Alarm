@@ -7,8 +7,12 @@
 #define logLEVEL 2              // any output with log level <= this number is logged
 #define maxLOG_STRING_LEN 240   // max len of logstring
 
+#define maxDrawBufferLen 200  // max length of draw buffer for screen data
+
 extern RTC_DATA_ATTR uint32_t fgndColor;
 extern RTC_DATA_ATTR uint32_t bgndColor;
+
+#define maxSleeptimeSafetyLimit 2000000000 // safety limit for deep sleep: no sleep above 2000 sec
 
 //*************** global global variables ******************/
 extern char outstring[maxLOG_STRING_LEN];
@@ -27,7 +31,7 @@ struct measurementData
   bool justInitialized;   // indicator for the fact that software has just been initialized (test data)
   bool dataPresent;       // for simulation. do not create simulation data if this is true
   int32_t graphicsType; // determine which graph is shown  0: pressure, 1: temperature, 2: humidity
-  int32_t startCounter;    // total counter for starts of ESP32
+  int32_t startCounter;  // total counter for starts of ESP32
   int32_t dischgCnt;    // counter for starts of ESP32 since last charge
   struct timeval lastMeasurementTimestamp;  // time value when last measurement has been taken
   struct timeval last2MeasurementTimestamp;  // time value when measurement before last has been taken
@@ -38,21 +42,28 @@ struct measurementData
   bool alertON;          // remembers if an alert has been triggered
   mainLoopMode currentMode; // current main loop mode
 
-  int32_t targetMeasurementIntervalSec;    // sleep time target in seconds, controls the measurement
+  int32_t targetMeasurementIntervalSec=20;    // sleep time target in seconds, controls the measurement
   int32_t lastTargetSleeptime;             // last target standard sleep time in seconds
   int64_t lastActualSleeptimeAfterMeasUsec;         // this is the number in usec actually used to set the sleep timer after last measurement
   int64_t lastActualSleeptimeNotMeasUsec;         // this is the number in usec actually used to set the sleep timer when no measurement
 
-  float anchorBearingDeg = 45;        // anchor angle in degrees
+  float anchorBearingDeg = 45;      // anchor angle in degrees
   float anchorDistanceM = 23;       // anchor distance in meters
-  int32_t alertCount = 3;           // number of position deviations before alarm is triggered
+  int32_t alertThreshold = 10;       // number of position deviations before alarm is triggered
   float alarmDistanceM = 40;        // alarm distance in meters
 
   double anchorLat;               // anchor latitude
   double anchorLon;               // anchor longitude
 
+  int32_t drawCount = 0;          // counter for display updates
+  int drawBuffer[maxDrawBufferLen][2];         // buffer for display data
   double actLat;                  // actual latitude
   double actLon;                  // actual longitude
+  float actAnchorBearingDeg;        // anchor angle in degrees
+  float actAnchorDistanceM;       // anchor distance in meters
+  double actHDOP;                 // GPS HDOP
+  int32_t SatCnt;                 // GPS visible satellites
+  double alertCount;              // counter for alert condition
 
   float batteryVoltage;
   float batteryPercent;
@@ -71,6 +82,7 @@ void drawInputMainScreen();
 void drawInputHeader();
 void drawInputData();
 void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
+void drawWatchScreen();
 
 boolean gpsTest();
 

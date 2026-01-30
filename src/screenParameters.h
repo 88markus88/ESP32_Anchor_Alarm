@@ -4,7 +4,7 @@
 
 #define SCREEN_ROTATION 1     // 0: portrait, 1: landscape, 2: portrait inverted, 3: landscape inverted
 
-
+// Input data screen parameters
 #define HEADER_FONT_SIZE        16
 #define HEADER_Y_POS            0
 #define HEADER_X_POS            0
@@ -16,5 +16,15 @@
 #define INPUTDATA_X_POS         140
 #define INPUTDATA_WIDTH         SCREEN_WIDTH - INPUTDATA_X_POS-1
 #define INPUTDATA_HEIGHT        SCREEN_WIDTH - INPUTDATA_Y_POS-1
+
+#define NUM_INPUTDATA_LINES     5
+
+// Watch screen parameters
+#define CIRCLE_RADIUS         60
+#define CIRCLE_CENTER_X       SCREEN_WIDTH / 2
+#define CIRCLE_CENTER_Y       SCREEN_HEIGHT / 2 + 10
+
+
+
 
 //---------------------------- End Screen parameters --------------------------

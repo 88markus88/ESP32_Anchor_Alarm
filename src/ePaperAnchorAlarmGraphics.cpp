@@ -375,11 +375,15 @@ void inputFirstScreen()
     display.print(outstring);
     x=0; y=7*16;
     display.setCursor(x, y);
-    sprintf(outstring,"Alert Count :");
+    sprintf(outstring,"Alert Thresh:");
     display.print(outstring);
     x=0; y=8*16;
     display.setCursor(x, y);
-    sprintf(outstring,"Alert Dist :");
+    sprintf(outstring,"Alert Dist  :");
+    display.print(outstring);
+    x=0; y=9*16;
+    display.setCursor(x, y);
+    sprintf(outstring,"Exit        :");
     display.print(outstring);
   }
   while (display.nextPage());
@@ -387,86 +391,6 @@ void inputFirstScreen()
   // write prompt
   display.setCursor(0, 0);
 }
-/*****************************************************************************! 
-  @brief  getInputMainScreen- get input from user and display on screen
-  @details 
-  @return void
-*****************************************************************************/
-/*
-void getInputMainScreen()
-{
-  int x, y;
-  int cnt=0;
-  bool exit = false;
-
-  // init display and clear screen
-  display.init(115200,true,50,false);
-  display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(GxEPD_BLACK);
-  display.setRotation(1);
-
-  gpsTest(); // get GPS Info
-  inputFirstScreen(); // first screen mask
-  delay(2000);
-
-  // box parameters for partial screen update
-  uint16_t box_x = 140;
-  uint16_t box_y = 5*16-15;
-  uint16_t box_w = 200-box_x-1;
-  uint16_t box_h = 200-box_y-1;
-  do{
-    gpsTest(); // get GPS Info
-   
-    // partial update of upper part of screen
-    display.firstPage();
-    do
-    {
-      display.setPartialWindow(0, 0, 200, 2*16);
-      display.fillRect(0, 0, 200, 2*16, GxEPD_WHITE);
-      x=0; y=1*16-1;
-      display.setCursor(x, y);
-      sprintf(outstring,"Anchor Alarm");
-      display.print(outstring);
-      x=0; y=2*16-1;
-      display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
-      display.print(outstring);
-      logOut(2, outstring);
-    }
-    while (display.nextPage());
-
-    display.firstPage();
-    do
-    {
-      display.setPartialWindow(box_x, box_y, box_w, box_h);
-      display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE);
-      x=150; y=5*16-1;
-      display.setCursor(x, y);
-      //sprintf(outstring,"%3.0f deg",wData.anchorAngleDeg);
-      sprintf(outstring,"%3.0f deg",(wData.anchorAngleDeg)+cnt%360);
-      display.print(outstring);
-      x=150; y=6*16-1;
-      display.setCursor(x, y);
-      //sprintf(outstring,"%3.0f m",wData.anchorDistanceM);
-      sprintf(outstring,"%3.0f m",wData.anchorDistanceM+cnt%100);
-      display.print(outstring);
-      x=150; y=7*16-1;
-      display.setCursor(x, y);
-      //sprintf(outstring,"%3d",wData.alertCount);
-      sprintf(outstring,"%3d",cnt);
-      display.print(outstring);
-    }
-    while (display.nextPage());
-    delay(500);
-    // get input from user
-    //exit = getInputValues();
-    cnt++;
-  }while (!exit);
-  // write prompt
-  display.setCursor(0, 0);
-}
-*/  
-
 
 /*****************************************************************************! 
   @brief  drawTriangle - draw on screen
@@ -575,7 +499,7 @@ void drawInputData(){
     display.print(outstring);
     x=150; y=7*16-1;
     display.setCursor(x, y);
-    sprintf(outstring,"%3d",wData.alertCount);
+    sprintf(outstring,"%3d",wData.alertThreshold);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
     x=150; y=8*16-1;
@@ -583,6 +507,111 @@ void drawInputData(){
     sprintf(outstring,"%3.0f",wData.alarmDistanceM);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
+  }
+  while (display.nextPage());
+}
+
+
+/*****************************************************************************! 
+  @brief  drawWatchScreen - display main watch screen
+  @details 
+  @return void
+*****************************************************************************/
+void drawWatchScreen(){
+  int x, y;
+
+  display.setFullWindow();
+  display.firstPage();
+  do
+  {
+    x=0; y= 16;
+
+    display.fillScreen(GxEPD_WHITE);
+    display.setCursor(x, y);
+    #ifdef VERSION
+      sprintf(outstring, "AnchorAlarm %s",VERSION);
+    #else
+      sprintf(outstring,"ePaperAnchorAlarm");
+    #endif  
+    display.print(outstring);
+
+    x=0; y=2*16;
+    display.setCursor(x, y);
+    sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
+    display.print(outstring);
+
+    x=0; y=3*16;
+    display.setCursor(x, y);
+    sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
+    display.print(outstring);
+    
+    x=150; y=3*16;
+    display.setCursor(x, y);
+    sprintf(outstring,"%3.1f",wData.alertCount);
+    display.print(outstring);
+
+    x=0; y=SCREEN_HEIGHT-1;
+    display.setCursor(x, y);
+    sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
+    display.print(outstring);
+
+    x=0; y=SCREEN_HEIGHT-16;
+    display.setCursor(x, y);
+    sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+    display.print(outstring);
+
+    display.drawCircle(CIRCLE_CENTER_X, CIRCLE_CENTER_Y, CIRCLE_RADIUS, GxEPD_BLACK);
+    display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    display.drawFastVLine(CIRCLE_CENTER_X, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+
+    // draw all points (old data positions) from draw buffer
+    // three pixels to improve visibility
+    for(int i=0; i< ((wData.drawCount<maxDrawBufferLen)? wData.drawCount : maxDrawBufferLen); i++){
+      x=wData.drawBuffer[i][0];
+      y=wData.drawBuffer[i][1];
+      if(x<SCREEN_WIDTH && y<SCREEN_HEIGHT){ // do not draw beyond screen
+        display.drawPixel(x, y, GxEPD_BLACK); 
+        display.drawPixel(1+x, y, GxEPD_BLACK); 
+        display.drawPixel(x, 1+ y, GxEPD_BLACK); 
+      }
+    }
+
+    // draw boat position
+    float d = wData.actAnchorDistanceM * CIRCLE_RADIUS / wData.alarmDistanceM;
+    float beta = wData.actAnchorBearingDeg;
+    int xOff = (int)(0.5+  d * sin(beta * DEG_TO_RAD));
+    int yOff = (int)(0.5+ -d * cos(beta * DEG_TO_RAD));
+    x=CIRCLE_CENTER_X + xOff;
+    y=CIRCLE_CENTER_Y + yOff;
+    if(x<SCREEN_WIDTH && y<SCREEN_HEIGHT){ // do not draw beyond screen
+      display.drawCircle(x, y, 6, GxEPD_BLACK);
+      display.fillCircle(x, y, 4, GxEPD_BLACK); 
+      display.fillCircle(x, y, 2, GxEPD_WHITE); 
+    }
+    sprintf(outstring,"Cnt: %d d: %.1f m b: %.1f deg xOff: %d yOff: %d", 
+      wData.drawCount, wData.actAnchorDistanceM, wData.actAnchorBearingDeg, xOff, yOff );
+    logOut(2, outstring);
+
+    int posX = CIRCLE_CENTER_X + xOff;;
+    int posY = CIRCLE_CENTER_Y + yOff;
+
+    // write point to draw buffer for later use, but only if not yet in buffer to save space
+    boolean pointFound = false;
+    for (int i=0; i< maxDrawBufferLen-1; i++){
+      if(wData.drawBuffer[i][0] == posX && wData.drawBuffer[i][1] == posY){
+        // point already in buffer
+        pointFound = true;
+        break;
+      } 
+      wData.drawBuffer[i][1] = wData.drawBuffer[i+1][1];
+    }
+    if(!pointFound){
+      wData.drawCount++;
+      int idx = (wData.drawCount-1)%maxDrawBufferLen;
+      wData.drawBuffer[idx][0] = posX;
+      wData.drawBuffer[idx][1] = posY;
+    }
+    
   }
   while (display.nextPage());
 }

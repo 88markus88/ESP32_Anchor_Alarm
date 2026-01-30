@@ -20,6 +20,19 @@ int gpsTimerHandle=1;
 #define ENCODER_DT_PIN 27
 #define ENCODER_SW_PIN 26
 
+// button stuff from ePaperBarograf
+#define BUTTON1 GPIO_NUM_26
+struct Button {
+  const uint8_t PIN;
+  uint32_t numberKeyPresses;
+  bool pressed;
+};
+volatile Button button1 = {ENCODER_SW_PIN, 0, false};
+
+void ARDUINO_ISR_ATTR button1Handler();
+
+
+
 // include bounce2 library for button debouncing
 #include <Bounce2.h>
 Bounce button = Bounce();
@@ -132,7 +145,11 @@ void logOut(int logLevel, char* str)
   }
 }
 
-// interrupt handling for button press
+/**************************************************!
+   @brief    handleButtonInterrupt()
+   @details  interrupt handling for button pressed on rotary encoder
+   @return   void
+***************************************************/
 volatile bool buttonEvent = false;
 volatile unsigned long lastInterruptTime = 0;
 
@@ -146,26 +163,30 @@ void IRAM_ATTR handleButtonInterrupt() {
   }
 }
 
-// display GPS info
+// possibly better, not yet used 30.1.26
+void ARDUINO_ISR_ATTR button1Handler()
+{
+    if(!button1.pressed)  // avoid repeated pressed to be counted, entprellen
+      button1.numberKeyPresses += 1;
+    button1.pressed = true;
+    //sprintf(outstring, "Button 1 pressed %d\n", button1.numberKeyPresses);
+    //logOut(2,outstring);
+}
+
+/**************************************************!
+   @brief    displayGPSInfo()
+   @details  display GPS info, if available
+   @return   void
+***************************************************/
 void displayGPSInfo()
 {
-  //Serial.print(F("Location: ")); 
+  strcpy(outstring,"");
 
   if (gps.location.isValid())
   {
-    Serial.print(F(" Sats: "));
-    Serial.print(gps.satellites.value());
-    Serial.print(F(" HDOP: "));
-    Serial.print(gps.hdop.hdop(), 2);   
-    
-    Serial.print(F(" Location: ")); 
-    Serial.print(gps.location.lat(), 6);
-    Serial.print(F(","));
-    Serial.print(gps.location.lng(), 6);
-
     double distanceToStart = TinyGPSPlus::distanceBetween(
       gps.location.lat(),
-      gps.location.lng(),
+      gps.location.lng(), 
       anchorLat,
       anchorLon);
     double courseToStart = TinyGPSPlus::courseTo(
@@ -173,14 +194,11 @@ void displayGPSInfo()
       gps.location.lng(),
       anchorLat,
       anchorLon);
-    Serial.print(F("  Dist2Start: "));
-    Serial.print(distanceToStart, 2); 
-    Serial.print(F(" m  Course2Start: "));
-    Serial.print(courseToStart, 2);     
-
+    
     wData.actLat = gps.location.lat();
     wData.actLon = gps.location.lng();
-    sprintf(outstring," Stored Lat/Lon: %6.4f %6.4f",wData.actLat , wData.actLon);
+    sprintf(outstring," GPS Sats: #%ld HDOP: %4.2f Dist2Start: %4.2f m Course2Start: %4.2f° Stored Lat/Lon: %6.4f %6.4f",
+        gps.satellites.value(),gps.hdop.hdop(), distanceToStart, courseToStart, wData.actLat , wData.actLon);
     logOut(2, outstring);
   }
   else
@@ -191,12 +209,14 @@ void displayGPSInfo()
   // Serial.print(F("  Date/Time: "));
   if (gps.date.isValid())
   {
-    Serial.print(F("  Date/Time: "));
-    Serial.print(gps.date.day());
-    Serial.print(F("."));
-    Serial.print(gps.date.month());
-    Serial.print(F("."));
-    Serial.print(gps.date.year());
+    //Serial.print(F("  Date/Time: "));
+    //Serial.print(gps.date.day());
+    //Serial.print(F("."));
+    //Serial.print(gps.date.month());
+    //Serial.print(F("."));
+    //Serial.print(gps.date.year());
+    sprintf(outstring,"%s Date: %02d.%02d.%04d",
+        outstring, gps.date.day(),gps.date.month(),gps.date.year());
   }
   else
   {
@@ -206,33 +226,46 @@ void displayGPSInfo()
   //Serial.print(F(" "));
   if (gps.time.isValid())
   {
-    Serial.print(F(" "));
-    if (gps.time.hour() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.hour());
-    Serial.print(F(":"));
-    if (gps.time.minute() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.minute());
-    Serial.print(F(":"));
-    if (gps.time.second() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.second());
-    Serial.print(F("."));
-    if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.centisecond());
-    Serial.print(F(" "));
+    //Serial.print(F(" "));
+    //if (gps.time.hour() < 10) Serial.print(F("0"));
+    //Serial.print(gps.time.hour());
+    //Serial.print(F(":"));
+    //if (gps.time.minute() < 10) Serial.print(F("0"));
+    //Serial.print(gps.time.minute());
+    //Serial.print(F(":"));
+    //if (gps.time.second() < 10) Serial.print(F("0"));
+    //Serial.print(gps.time.second());
+    //Serial.print(F("."));
+    //if (gps.time.centisecond() < 10) Serial.print(F("0"));
+    //Serial.print(gps.time.centisecond());
+    //Serial.print(F(" "));
+    sprintf(outstring,"%s Time: %02d:%02d:%02d.%02d",
+        outstring, gps.time.hour(),gps.time.minute(),gps.time.second(),gps.time.centisecond());
   }
   else
   {
     //Serial.print(F("INVALID"));
   }
 
-  Serial.println();
+  logOut(2, outstring);
+  //Serial.println();
 }
 
 #include <math.h>
 
 #define EARTH_RADIUS 6371000.0  // Meter
 
-// Calculate new GPS position given start coords, distance and bearing
+/**************************************************!
+   @brief    gps_offset()
+   @details  Calculate new GPS position given start coords, distance and bearing
+   @param    double lat1_deg      : start latitude in degrees
+   @param    double lon1_deg      : start longitude in degrees
+   @param    double distance_m    : distance to move in meters
+   @param    double bearing_deg   : bearing in degrees
+   @param    double *lat2_deg     : pointer to store resulting latitude in degrees
+   @param    double *lon2_deg     : pointer to store resulting longitude in degrees
+   @return   void
+***************************************************/
 void gps_offset(
     double lat1_deg,
     double lon1_deg,
@@ -266,7 +299,13 @@ void gps_offset(
     *lon2_deg = lon2 * 180.0 / M_PI;
 }
 
-// get the initial start position from GPS
+/**************************************************!
+   @brief    getGPSStartPosition()
+   @details  get the initial start position from GPS, averaging several readings
+   @param    double *startLat : pointer to store start latitude (Breitengrad)  
+   @param    double *startLon : pointer to store start longitude (Längengrad)
+   @return   void
+***************************************************/
 void getGPSStartPosition(double *startLat, double *startLon) // get start position from GPS
 {
   Serial.println(F("Getting GPS start position..."));
@@ -317,8 +356,14 @@ void getGPSStartPosition(double *startLat, double *startLon) // get start positi
 
 }
 
-// This custom version of delay() ensures that the gps object
-// is being "fed".
+/**************************************************!
+   @brief    smartDelay()
+   @details  This custom version of delay() ensures that the gps object is being "fed".
+   @details  It should be used instead of delay() when waiting for GPS data.
+   @details  however, it utilizes a blocking delay, so no other tasks can be done during this time.
+   @param    unsigned long ms : delay time in milliseconds
+   @return   void
+***************************************************/
 static void smartDelay(unsigned long ms)
 {
   char ch;
@@ -336,8 +381,6 @@ static void smartDelay(unsigned long ms)
 /**************************************************!
    @brief    gpsHandler()
    @details  Function to handle input from gps module, called by timer
-   @param    void 
-   @return   void
 ***************************************************/
 void gpsHandler(){
   char ch;
@@ -354,14 +397,12 @@ void gpsHandler(){
    @param    void 
    @return   true if gps location is valid, else false
 ***************************************************/
-
 boolean gpsTest()
 {
   smartDelay(1000); // wait for 1 second while feeding gps object
   displayGPSInfo();  // get and display GPS info
   return gps.location.isValid();
 }
-
 
 /**************************************************!
    @brief    buzzer()
@@ -471,20 +512,16 @@ void setup()
   // short display test
   if(testDisplayModule)
     testDisplay();  
-  if(testBuzzer)
-    buzzer(1,100,500); // buzzer test
-  if(testDisplayModule)
-    testDisplayWeAct();
-  if(testBuzzer){  
-    // buzzer(2,500,100); // buzzer test
-    // buzzer test
 
+  if(testBuzzer)        // buzzer test
+    buzzer(1,100,500); 
+  if(testDisplayModule) // display test, original from WeAct (manufacturer of the ePaper display)
+    testDisplayWeAct();
+  if(testBuzzer){       // buzzer test
     for(int i=0; i<5; i++)
     {
        buzzer(1,100,500-i*75); // buzzer test
-      //buzzer(3,100,500); // buzzer test
     } 
-    //buzzer(3,300,1000); // buzzer test
   }  
 
   // Serial port for GPS module
@@ -510,15 +547,101 @@ void setup()
   
 } // setup
 
+/*****************************************************************************! 
+  @brief  handleExt0Wakeup()
+  @details handle wakeup by EXT0 wakeup source = button via GPIO 
+  @return void
+*****************************************************************************/
+void handleExt0Wakeup()
+{
+    // if woken up by button 1 short press: toggle display
+    // not yet implemented
+
+    // if woken up by button remember this, may be alert acknowledge
+    // wData.buttonPressed = true;
+
+    // if woken up by button1 long press: goto bluetooth configuration routine
+    // but not if an alert was on, then the button press is assumed to cancel the alert only
+    if(!wData.alertON){
+      // do something tbd
+
+    } // !alertON
+}
 
 /*****************************************************************************! 
-  @brief  handleParamChange - Test main worker routine
+  @brief    print_wakeup_reason
+  @details  determine wakeup reason
+  @param  void
+  @return void
+*****************************************************************************/
+// https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
+uint32_t print_wakeup_reason() 
+{
+  esp_sleep_wakeup_cause_t wakeup_reason;
+
+  wakeup_reason = esp_sleep_get_wakeup_cause();
+
+  switch (wakeup_reason) {
+    case ESP_SLEEP_WAKEUP_EXT0:     logOut(2,(char*)"Wakeup caused by external signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1:     logOut(2,(char*)"Wakeup caused by external signal using RTC_CNTL"); break;
+    case ESP_SLEEP_WAKEUP_TIMER:    logOut(2,(char*)"Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD: logOut(2,(char*)"Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP:      logOut(2,(char*)"Wakeup caused by ULP program"); break;
+    default:                        sprintf(outstring,"Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
+                                    logOut(2, outstring);
+  }
+  return(wakeup_reason);
+}
+
+/*****************************************************************************! 
+  @brief    gotoDeepSleep: routine to enter deep sleep
+  @details  
+  @param  deepSleepTime  time to to into deep sleep
+  @return void
+*****************************************************************************/
+void gotoDeepSleep(gpio_num_t button, uint64_t deepSleepTime)
+{
+  //**********  TEST override
+  // sleeptime = 60 * SECONDS - 1000*(millis()-startTimeMillis);
+  uint32_t am = millis();
+  sprintf(outstring,"Hibernating for target %ld sec: %lld usec ", 
+          wData.targetMeasurementIntervalSec, deepSleepTime);  
+  logOut(2,outstring);
+  if(deepSleepTime > maxSleeptimeSafetyLimit){
+    sprintf(outstring,"Hibernating time %lld usec above safety limit. Reducing to %ld usec    ", 
+          deepSleepTime, maxSleeptimeSafetyLimit);  
+    logOut(2,outstring);
+  }
+
+  // shut down display
+  endDisplay(1); // mode 0: power off, mode 1: hibernate
+  //1: display.hibernate();  // danach wird beim wieder aufwachen kein Reset des Screens gemacht.
+  //0: display.powerOff(); // danach wird beim wieder aufwachen ein voller Reset des Screens gemacht
+
+  // Initiate sleep
+  esp_sleep_enable_timer_wakeup(deepSleepTime);   // define sleeptime for timer wakeup
+  // and via external pin. only one seems possible.
+  // https://randomnerdtutorials.com/esp32-deep-sleep-arduino-ide-wake-up-sources/
+  #ifdef LOLIN32_LITE
+    esp_sleep_enable_ext0_wakeup(button, HIGH); // enable wakeup via button1
+  #endif  
+  #ifdef CROW_PANEL
+    esp_sleep_enable_ext0_wakeup(button, LOW); // enable wakeup via button1
+  #endif  
+  rtc_gpio_pullup_dis(button);  //Configure pullup/downs via RTCIO to LOW during deepsleep
+  rtc_gpio_pulldown_en(button); // EXT0 resides in the same power domain (RTC_PERIPH) as the RTC IO pullup/downs.
+    
+  esp_deep_sleep_start();                               // go to sleep
+}
+
+/*****************************************************************************! 
+  @brief  handleParamChange - Main worker routine to handle single parameter changes
   @details This routine handles the adaptation of a single parameter via rotary encode
   @param  int trianglePos : position of triangle indicating which parameter to change. 
   @param  0: anchor bearing; 1: anchor distance, 2: alarm coount; 3:alarm distance
-  @return void
+  @return boolean : true if parameter change ongoing, false if exit parameter change mode
 *****************************************************************************/
-void handleParamChange(int trianglePos)
+boolean handleParamChange(int trianglePos)
 {
   switch(trianglePos){
     case 0: // anchor bearing
@@ -554,10 +677,10 @@ void handleParamChange(int trianglePos)
       {
         int64_t encoderPos = encoder.getCount();
         if(encoderPos != 0){
-          wData.alertCount += -encoderPos; // each step is 1
-          if(wData.alertCount < 1)
-            wData.alertCount = 1; // minimum 1
-          sprintf(outstring,"handleParamChange: Alarm count changed to %ld", wData.alertCount);
+          wData.alertThreshold += -encoderPos; // each step is 1
+          if(wData.alertThreshold < 1)
+            wData.alertThreshold = 1; // minimum 1
+          sprintf(outstring,"handleParamChange: Alarm count changed to %ld", wData.alertThreshold);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -577,10 +700,17 @@ void handleParamChange(int trianglePos)
           drawInputData(); // redraw input data
         }  // encoder
       } 
-      break;    
+      break;   
+    case 4: // exit parameter change mode
+      {
+        logOut(2, (char*)"handleParamChange: !!!!!!!!! EXIT !!!!!!!!!");
+        return false;
+      }
+      break;   
     default:
       logOut(2, (char*)"handleParamChange: default in case statement");
   } 
+  return true;
 }
 
 /*****************************************************************************! 
@@ -609,9 +739,18 @@ void doTestWork()
 void doRoutineWork()
 {
   int cnt = 0;
+  uint32_t ret;
   boolean gpsValid = false, gpsUpdated = false;
   static int trianglePos = 0; // position of triangle indicator, serves as line selector
   static boolean handleParamchanges = false; // if true, handle parameter changes per line
+  uint32_t targetSleepUSec;               // target sleep time in microseconds
+
+  // determine reason for wakeup. if timer wakeup: continue with measurements. 
+  // if EXT0 wakeup (button pressed): handleExt0Wakeup()
+  ret=print_wakeup_reason(); // determine reason for wakeup
+  // switch colors if woken up by GPIO = key pressed
+  if(ret == ESP_SLEEP_WAKEUP_EXT0)
+    handleExt0Wakeup();
 
   switch(wData.currentMode){
     case MODE_STARTED:    // just started
@@ -656,8 +795,8 @@ void doRoutineWork()
             else if(encoderPos < 0)
               trianglePos ++; // increase
             if(trianglePos < 0) // wrap around
-              trianglePos = 3;  // max of four positions 0..3
-            trianglePos = (trianglePos) % 4; // four positions
+              trianglePos = NUM_INPUTDATA_LINES-1;  // max of five positions 0..4
+            trianglePos = (trianglePos) % NUM_INPUTDATA_LINES; // five positions
             sprintf(outstring,"doRoutineWork: Encoder triggered. encoderPos: %ld New trianglePos: %d", (int32_t)encoderPos, trianglePos);
             logOut(2, outstring);
             encoder.setCount(0); // reset encoder count
@@ -695,10 +834,81 @@ void doRoutineWork()
         } 
 
         if(handleParamchanges){
-          handleParamChange(trianglePos); // handle parameter change within a line
-        }
+          boolean ret = handleParamChange(trianglePos); // handle parameter change within a line
+          if(!ret){ // exit parameter change mode, go to running mode - anchor alarm active
+            handleParamchanges = false;
+            // get anchor position from current GPS position
+            getGPSStartPosition(&wData.actLat, &wData.actLon); // get averaged boat start position from GPS
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Current GPS position Lat: %6.4f Lon: %6.4f", 
+                wData.actLat, wData.actLon);  
+            logOut(2, outstring);
+            // project anchor distance and bearing from start position to get anchor position
+            gps_offset(startLat, startLon, wData.anchorDistanceM, wData.anchorBearingDeg, &wData.anchorLat, &wData.anchorLon);
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor position set to Lat: %6.4f Lon: %6.4f", 
+                wData.anchorLat, wData.anchorLon);
+            logOut(2, outstring);
+            //initialize draw buffer
+            wData.drawCount = 0;
+            for (int i=0; i<maxDrawBufferLen; i++){
+              wData.drawBuffer[i][0] = 0;
+              wData.drawBuffer[i][1] = 0;
+            }
+            wData.currentMode = MODE_RUNNING; // go to change param mode
+          }
+        }  
       }
       break;  
+    case MODE_RUNNING:    // anchor alarm active
+      {
+        if(!wData.buttonPressed){
+          double startLat = 0.0; double startLon = 0.0;
+          sprintf(outstring,"doRoutineWork: MODE_RUNNING ... %d", cnt++);
+          logOut(2, outstring);
+          if(gps.location.isUpdated() && gps.location.isValid()){   
+            wData.actLat = gps.location.lat();
+            wData.actLon = gps.location.lng();
+            wData.actHDOP= gps.hdop.hdop();
+            wData.SatCnt = gps.satellites.value();
+            sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current GPS position Lat: %6.4f Lon: %6.4f", 
+                wData.actLat, wData.actLon);                
+            logOut(2, outstring);
+            // calculate distance between actual position and anchor position
+            wData.actAnchorDistanceM = TinyGPSPlus::distanceBetween(wData.actLat,wData.actLon, wData.anchorLat, wData.anchorLon);
+            // calculate bearing from first to second position. Here: from anchor to actual position of boat
+            wData.actAnchorBearingDeg = TinyGPSPlus::courseTo(wData.anchorLat, wData.anchorLon, wData.actLat,wData.actLon);
+
+            // calc alert counter, based on deviation
+            // 10% over adds 1, 30% over adds 3, 100% over adds 10
+            if(wData.actAnchorDistanceM > wData.alarmDistanceM)
+               wData.alertCount += 10.0* (wData.actAnchorDistanceM / wData.alarmDistanceM -1.0);
+            else
+              wData.alertCount = 0.0;
+            if(wData.alertCount >= wData.alertThreshold)     // alarm!
+              wData.alertON = true;
+            else
+              wData.alertON = false;
+            if(wData.alertON){    
+              buzzer(3, 100,50);
+              smartDelay(1000);
+            }  
+            else{
+              // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
+              targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;
+              //gotoDeepSleep(BUTTON1, targetSleepUSec); // go to deep sleep. parameters: sleeptime in us, button to wakeup from  
+              smartDelay(5000);
+            }
+
+            sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current distance anchor-boat: %4.2f m Bearing anchor-boat: %4.2f°", 
+                wData.actAnchorDistanceM, wData.actAnchorBearingDeg); 
+            logOut(2, outstring);
+          } 
+          drawWatchScreen();
+        }
+        else{ // button pressed
+          wData.buttonPressed = false; // reset button pressed state  
+          wData.currentMode = MODE_STARTED; // go to start mode
+        }    
+      }
     default:  
     {
       sprintf(outstring,"doRoutineWork: default in case statement ... %d", cnt);
@@ -709,6 +919,24 @@ void doRoutineWork()
 } // doRoutineWork
 
 
+/*****************************************************************************! 
+  @brief  checkButon()    
+  @details 
+  @return void
+*****************************************************************************/
+void checkButton()
+{
+  if (buttonEvent) {
+    buttonEvent = false;
+    if(!wData.buttonPressed){
+      logOut(2, (char*)"Interrupt: Rotary encoder button released.");
+      wData.buttonPressed = true;
+      buzzer(1,50,0); // buzzer feedback
+    } 
+    sprintf(outstring,"Interrupt: Button wurde gedrückt");
+    logOut(2, outstring);
+  }
+} 
 
 /*****************************************************************************! 
   @brief  main loop
@@ -727,16 +955,8 @@ void loop()
     wData.buttonPressed = true;
   }
   */
-  if (buttonEvent) {
-    buttonEvent = false;
-    if(!wData.buttonPressed){
-      logOut(2, (char*)"Interrupt: Rotary encoder button released.");
-      wData.buttonPressed = true;
-      buzzer(1,50,0); // buzzer feedback
-    } 
-    Serial.println("Interrupt: Button wurde gedrückt");
-  }
+  checkButton();
 
   doRoutineWork();
-  gpsTimer.run(); // run gps timer
+  gpsTimer.run(); // run gps timer to get data from gps module
 };

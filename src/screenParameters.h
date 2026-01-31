@@ -6,6 +6,7 @@
 
 // Input data screen parameters
 #define HEADER_FONT_SIZE        16
+#define DATA_FONT_SIZE          16
 #define HEADER_Y_POS            0
 #define HEADER_X_POS            0
 #define HEADER_WIDTH            SCREEN_WIDTH

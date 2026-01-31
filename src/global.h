@@ -25,6 +25,12 @@ enum mainLoopMode {
   MODE_ALARN = 4
 };
 
+// defaults
+#define d_anchorBearingDeg 45 
+#define d_anchorDistanceM  23
+#define d_alertThreshold   10 
+#define d_alarmDistanceM   40   
+
 struct measurementData
 {
   // admin stuff
@@ -47,15 +53,15 @@ struct measurementData
   int64_t lastActualSleeptimeAfterMeasUsec;         // this is the number in usec actually used to set the sleep timer after last measurement
   int64_t lastActualSleeptimeNotMeasUsec;         // this is the number in usec actually used to set the sleep timer when no measurement
 
-  float anchorBearingDeg = 45;      // anchor angle in degrees
-  float anchorDistanceM = 23;       // anchor distance in meters
-  int32_t alertThreshold = 10;       // number of position deviations before alarm is triggered
-  float alarmDistanceM = 40;        // alarm distance in meters
+  float anchorBearingDeg;      // anchor angle in degrees
+  float anchorDistanceM;       // anchor distance in meters
+  int32_t alertThreshold;       // number of position deviations before alarm is triggered
+  float alarmDistanceM;        // alarm distance in meters
 
   double anchorLat;               // anchor latitude
   double anchorLon;               // anchor longitude
 
-  int32_t drawCount = 0;          // counter for display updates
+  int32_t drawCount;              // counter for display updates
   int drawBuffer[maxDrawBufferLen][2];         // buffer for display data
   double actLat;                  // actual latitude
   double actLon;                  // actual longitude
@@ -83,6 +89,7 @@ void drawInputHeader();
 void drawInputData();
 void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
 void drawWatchScreen();
+void setScreenParameters();
 
 boolean gpsTest();
 

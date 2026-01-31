@@ -351,7 +351,7 @@ void inputFirstScreen()
   display.firstPage();
   do
   {
-    x=0; y= 16;
+    x=0; y= HEADER_FONT_SIZE;
     display.fillScreen(GxEPD_WHITE);
     display.setCursor(x, y);
     #ifdef VERSION
@@ -361,27 +361,27 @@ void inputFirstScreen()
     #endif  
     display.print(outstring);
 
-    x=0; y=2*16;
+    x=0; y=2*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%6.5f %6.5f",wData.actLat,wData.actLon);
     display.print(outstring);
-    x=0; y=5*16;
+    x=0; y=5*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Anchor Bearg:");
     display.print(outstring);
-    x=0; y=6*16;
+    x=0; y=6*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Anchor Dist :");
     display.print(outstring);
-    x=0; y=7*16;
+    x=0; y=7*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Alert Thresh:");
     display.print(outstring);
-    x=0; y=8*16;
+    x=0; y=8*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Alert Dist  :");
     display.print(outstring);
-    x=0; y=9*16;
+    x=0; y=9*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Exit        :");
     display.print(outstring);
@@ -402,7 +402,7 @@ void inputFirstScreen()
 *****************************************************************************/
 void drawTriangle(bool visible,  int16_t xpos, int16_t ypos)
 {
-  int16_t height = 16, width = 8;
+  int16_t height = HEADER_FONT_SIZE, width = 8;
   display.setPartialWindow(xpos, ypos, width, height);
 
   //sprintf(outstring,"drawTriangle at %d,%d visible=%d",xpos,ypos,visible);
@@ -423,6 +423,21 @@ void drawTriangle(bool visible,  int16_t xpos, int16_t ypos)
   } while (display.nextPage());
 }
 
+
+/*****************************************************************************! 
+  @brief  setScreenParameters
+  @details init screen and set font, text color, rotation
+  @return void
+*****************************************************************************/
+void setScreenParameters()
+{
+  display.init(115200,true,50,false); // init display and clear screen
+  display.setFont(&FreeMonoBold9pt7b);// set font
+  // display.setFont(NULL); // set default 5x7 font
+  display.setTextColor(GxEPD_BLACK);  // set text color
+  display.setRotation(SCREEN_ROTATION);//and screen rotation
+}  
+
 /*****************************************************************************! 
   @brief  drawInputMainScreen- display input mask on screen
   @details 
@@ -433,12 +448,6 @@ void drawInputMainScreen()
   int x, y;
   int cnt=0;
   bool exit = false;
-
-  // init display and clear screen
-  display.init(115200,true,50,false);
-  display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(GxEPD_BLACK);
-  display.setRotation(SCREEN_ROTATION);
 
   inputFirstScreen(); // first screen mask
 }
@@ -456,16 +465,29 @@ void drawInputHeader(){
   {
     display.setPartialWindow(HEADER_X_POS, HEADER_Y_POS, HEADER_WIDTH, HEADER_HEIGHT);
     display.fillRect(HEADER_X_POS, HEADER_Y_POS, HEADER_WIDTH, HEADER_HEIGHT, GxEPD_WHITE);
+    
     x=0; y=1*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
-    sprintf(outstring,"Anchor Alarm");
-    // logOut(2, outstring);
-    display.print(outstring);
+    #ifdef VERSION
+      sprintf(outstring, "AnchorAlarm %s",VERSION);
+    #else
+      sprintf(outstring,"ePaperAnchorAlarm");
+    #endif  
+    display.print(outstring); 
+    
     x=0; y=2*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
     logOut(2, outstring);
     display.print(outstring);
+    
+    /*
+    x=0; y=3*HEADER_FONT_SIZE-1;
+    display.setCursor(x, y);
+    sprintf(outstring,"S:%d H:%4.2f",wData.SatCnt,wData.actHDOP);
+    logOut(2, outstring);
+    display.print(outstring);
+    */
   }
   while (display.nextPage());
 }
@@ -487,22 +509,22 @@ void drawInputData(){
   {
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE);
-    x=150; y=5*16-1;
+    x=150; y=5*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f deg",wData.anchorBearingDeg);
     //sprintf(outstring,"%3.0f deg",(wData.anchorBearingDeg)+cnt%360);
     display.print(outstring);
-    x=150; y=6*16-1;
+    x=150; y=6*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f m",wData.anchorDistanceM);
     //sprintf(outstring,"%3.0f m",wData.anchorDistanceM+cnt%100);
     display.print(outstring);
-    x=150; y=7*16-1;
+    x=150; y=7*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3d",wData.alertThreshold);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
-    x=150; y=8*16-1;
+    x=150; y=8*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f",wData.alarmDistanceM);
     //sprintf(outstring,"%3d",cnt);
@@ -519,12 +541,14 @@ void drawInputData(){
 *****************************************************************************/
 void drawWatchScreen(){
   int x, y;
+  int16_t tbx, tby; uint16_t tbw, tbh; // variables for getting bounds of text fields
 
+  setScreenParameters(); // main parameters including color, font, rotation
   display.setFullWindow();
   display.firstPage();
   do
   {
-    x=0; y= 16;
+    x=0; y= HEADER_FONT_SIZE;
 
     display.fillScreen(GxEPD_WHITE);
     display.setCursor(x, y);
@@ -535,44 +559,69 @@ void drawWatchScreen(){
     #endif  
     display.print(outstring);
 
-    x=0; y=2*16;
+    x=0; y=2 * HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
     display.print(outstring);
 
-    x=0; y=3*16;
+    x=0; y=3 * HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
     display.print(outstring);
     
-    x=150; y=3*16;
-    display.setCursor(x, y);
     sprintf(outstring,"%3.1f",wData.alertCount);
+    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+    x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
+    display.setCursor(x, y);
     display.print(outstring);
 
-    x=0; y=SCREEN_HEIGHT-1;
+    sprintf(outstring,"%3.0f",wData.alarmDistanceM);
+    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+    x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    display.print(outstring);
+
+    x=0; y=SCREEN_HEIGHT - 1;
     display.setCursor(x, y);
     sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
     display.print(outstring);
 
-    x=0; y=SCREEN_HEIGHT-16;
+    x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
     display.print(outstring);
 
+    // alarm area circle and center mark
     display.drawCircle(CIRCLE_CENTER_X, CIRCLE_CENTER_Y, CIRCLE_RADIUS, GxEPD_BLACK);
     display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
     display.drawFastVLine(CIRCLE_CENTER_X, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    
+    // cardinal marks
+    x=CIRCLE_CENTER_X - 5; y = CIRCLE_CENTER_Y - CIRCLE_RADIUS + HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    display.print("N");
+    x=CIRCLE_CENTER_X - 5; y= CIRCLE_CENTER_Y + CIRCLE_RADIUS -5;
+    display.setCursor(x, y);
+    display.print("S");
+    x=CIRCLE_CENTER_X - CIRCLE_RADIUS + HEADER_FONT_SIZE /2 - 3; y = CIRCLE_CENTER_Y + HEADER_FONT_SIZE/2 -3;
+    display.setCursor(x, y);
+    display.print("W");
+    x=CIRCLE_CENTER_X + CIRCLE_RADIUS - HEADER_FONT_SIZE ; y= CIRCLE_CENTER_Y + HEADER_FONT_SIZE/2 - 3;
+    display.setCursor(x, y);
+    display.print("E");
 
     // draw all points (old data positions) from draw buffer
     // three pixels to improve visibility
+    sprintf(outstring,"drawing buffer. drawCount: %ld", wData.drawCount);
+    logOut(2, outstring);
     for(int i=0; i< ((wData.drawCount<maxDrawBufferLen)? wData.drawCount : maxDrawBufferLen); i++){
       x=wData.drawBuffer[i][0];
       y=wData.drawBuffer[i][1];
       if(x<SCREEN_WIDTH && y<SCREEN_HEIGHT){ // do not draw beyond screen
-        display.drawPixel(x, y, GxEPD_BLACK); 
-        display.drawPixel(1+x, y, GxEPD_BLACK); 
-        display.drawPixel(x, 1+ y, GxEPD_BLACK); 
+        display.fillCircle(x,y,1,GxEPD_BLACK); // small circle
+        //display.drawPixel(x, y, GxEPD_BLACK); // 3 dots
+        //display.drawPixel(1+x, y, GxEPD_BLACK); 
+        //display.drawPixel(x, 1+ y, GxEPD_BLACK); 
       }
     }
 

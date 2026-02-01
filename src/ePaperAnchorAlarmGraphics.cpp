@@ -581,6 +581,11 @@ void drawWatchScreen(){
     display.setCursor(x, y);
     display.print(outstring);
 
+    x=0; y=4 * HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"%ld",wData.startCounter);
+    display.print(outstring);
+
     x=0; y=SCREEN_HEIGHT - 1;
     display.setCursor(x, y);
     sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
@@ -595,6 +600,13 @@ void drawWatchScreen(){
     display.drawCircle(CIRCLE_CENTER_X, CIRCLE_CENTER_Y, CIRCLE_RADIUS, GxEPD_BLACK);
     display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
     display.drawFastVLine(CIRCLE_CENTER_X, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+
+    // make lines bigger
+    display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y - 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    display.drawFastVLine(CIRCLE_CENTER_X + 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y + 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    display.drawFastVLine(CIRCLE_CENTER_X - 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+
     
     // cardinal marks
     x=CIRCLE_CENTER_X - 5; y = CIRCLE_CENTER_Y - CIRCLE_RADIUS + HEADER_FONT_SIZE;
@@ -617,11 +629,15 @@ void drawWatchScreen(){
     for(int i=0; i< ((wData.drawCount<maxDrawBufferLen)? wData.drawCount : maxDrawBufferLen); i++){
       x=wData.drawBuffer[i][0];
       y=wData.drawBuffer[i][1];
-      if(x<SCREEN_WIDTH && y<SCREEN_HEIGHT){ // do not draw beyond screen
-        display.fillCircle(x,y,1,GxEPD_BLACK); // small circle
-        //display.drawPixel(x, y, GxEPD_BLACK); // 3 dots
+      if(x<SCREEN_WIDTH-2 && y<SCREEN_HEIGHT-2 && x>1 && y>1){ // do not draw beyond screen
+        // small circle
+        display.fillCircle(x,y,1,GxEPD_BLACK); 
+        // 3 dots - smaller
+        //display.drawPixel(x, y, GxEPD_BLACK); 
         //display.drawPixel(1+x, y, GxEPD_BLACK); 
         //display.drawPixel(x, 1+ y, GxEPD_BLACK); 
+        // 1 dot - very small
+        //display.drawPixel(x, y, GxEPD_BLACK); 
       }
     }
 
@@ -632,10 +648,11 @@ void drawWatchScreen(){
     int yOff = (int)(0.5+ -d * cos(beta * DEG_TO_RAD));
     x=CIRCLE_CENTER_X + xOff;
     y=CIRCLE_CENTER_Y + yOff;
-    if(x<SCREEN_WIDTH && y<SCREEN_HEIGHT){ // do not draw beyond screen
-      display.drawCircle(x, y, 6, GxEPD_BLACK);
-      display.fillCircle(x, y, 4, GxEPD_BLACK); 
-      display.fillCircle(x, y, 2, GxEPD_WHITE); 
+    if(x<SCREEN_WIDTH-9 && y<SCREEN_HEIGHT-9 && x> 8 && y > 8){ // do not draw beyond screen
+      display.fillCircle(x, y, 8, GxEPD_WHITE);
+      display.fillCircle(x, y, 6, GxEPD_BLACK);
+      display.fillCircle(x, y, 4, GxEPD_WHITE); 
+      display.fillCircle(x, y, 2, GxEPD_BLACK); 
     }
     sprintf(outstring,"Cnt: %d d: %.1f m b: %.1f deg xOff: %d yOff: %d", 
       wData.drawCount, wData.actAnchorDistanceM, wData.actAnchorBearingDeg, xOff, yOff );
@@ -652,7 +669,7 @@ void drawWatchScreen(){
         pointFound = true;
         break;
       } 
-      wData.drawBuffer[i][1] = wData.drawBuffer[i+1][1];
+      // fehler korr 1.2.26, dies raus: wData.drawBuffer[i][1] = wData.drawBuffer[i+1][1];
     }
     if(!pointFound){
       wData.drawCount++;

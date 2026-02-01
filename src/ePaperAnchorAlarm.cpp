@@ -112,10 +112,10 @@ RTC_DATA_ATTR uint32_t bgndColor;
 #define BUZZER_PIN 2
 
 // store these variables in RTC memory, which survives deep sleep. 
-RTC_DATA_ATTR uint32_t startCounter = 0; // 25920;  // total counter for starts of ESP32
-RTC_DATA_ATTR uint32_t dischgCnt = 0;    // counter for starts of ESP32 since last charge
-RTC_DATA_ATTR uint32_t prevMicrovolt = 0;
-RTC_DATA_ATTR float prevVoltage = 0;
+//RTC_DATA_ATTR uint32_t startCounter = 0; // 25920;  // total counter for starts of ESP32
+//RTC_DATA_ATTR uint32_t dischgCnt = 0;    // counter for starts of ESP32 since last charge
+//RTC_DATA_ATTR uint32_t prevMicrovolt = 0;
+//RTC_DATA_ATTR float prevVoltage = 0;
 
 // test control variables
 bool testRotaryEncoder = true;
@@ -500,6 +500,9 @@ void setup()
   logOut(2,outstring);
   logOut(2,(char*)"**********************************************************");
 
+  // increment start counter
+  wData.startCounter++;
+
    // initialize rotary encoder
    ESP32Encoder::useInternalWeakPullResistors = puType::up;
    encoder.attachHalfQuad(ENCODER_CLK_PIN, ENCODER_DT_PIN);
@@ -522,7 +525,7 @@ void setup()
 
   // initialize the display
   logOut(2,(char*)"before initDisplay()");
-  initDisplay(startCounter, FULL_UPDATE_INTERVAL); 
+  initDisplay(wData.startCounter, FULL_UPDATE_INTERVAL); 
 
   // Serial port for GPS module
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
@@ -535,6 +538,7 @@ void setup()
     wData.alertThreshold  = d_alertThreshold; 
     wData.alarmDistanceM  = d_alarmDistanceM;  
     wData.drawCount       = 0;
+    wData.startCounter    = 0;
   }
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
@@ -977,9 +981,13 @@ void doRoutineWork()
 
 } // doRoutineWork
 
+void checkEverything()
+{
+  for(int i=0;)
+}
 
 /*****************************************************************************! 
-  @brief  checkButon()    
+  @brief  checkButton()    
   @details 
   @return void
 *****************************************************************************/

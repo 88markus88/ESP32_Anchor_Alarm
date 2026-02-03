@@ -29,7 +29,11 @@ enum mainLoopMode {
 #define d_anchorBearingDeg 45 
 #define d_anchorDistanceM  23
 #define d_alertThreshold   10 
-#define d_alarmDistanceM   40   
+#define d_alarmDistanceM   40  
+
+// Battery Thresholds for alert
+#define BAT_VOLTAGE_THRESHOLD 3.6
+#define BAT_PERCENT_THRESHOLD 10
 
 struct measurementData
 {
@@ -90,6 +94,7 @@ void drawInputData();
 void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
 void drawWatchScreen();
 void setScreenParameters();
+void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
 
 boolean gpsTest();
 

@@ -31,17 +31,18 @@ volatile Button button1 = {ENCODER_SW_PIN, 0, false};
 
 void ARDUINO_ISR_ATTR button1Handler();
 
-
-
 // include bounce2 library for button debouncing
 #include <Bounce2.h>
 Bounce button = Bounce();
+
+// GPIO for measurement of voltage
+#define VOLTAGE_PIN 39
 
 // TinyGPSPlus library for GPS handling
 #include <TinyGPSPlus.h>
 // #include <SoftwareSerial.h>
 
-
+// float volt, percent;                    // battery voltage and percent fill degree
 
 static const int RXPin = 19, TXPin = 15; //22;
 static const uint32_t GPSBaud = 9600;
@@ -83,7 +84,7 @@ Preferences preferences; // object for preference storage in EEPROM
 #include "ePaperAnchorAlarm.h"
 #include "global.h" // global stuff from other modules
 
-float volt, percent;                    // battery voltage and percent fill degree
+//float volt, percent;                    // battery voltage and percent fill degree
 
 char outstring[maxLOG_STRING_LEN];      // for serial and other debug output
 
@@ -118,7 +119,7 @@ RTC_DATA_ATTR uint32_t bgndColor;
 //RTC_DATA_ATTR float prevVoltage = 0;
 
 // test control variables
-bool testRotaryEncoder = true;
+bool testRotaryEncoder = false;
 bool testGPSModule = true;
 bool testBuzzer = true;
 bool testDisplayModule = false;
@@ -145,6 +146,52 @@ void logOut(int logLevel, char* str)
   }
 }
 
+/*************************** getBatteryCapacity ************************** */
+int readBatteryVoltage(float* percent, float* volt)
+{
+  uint16_t readval;
+  uint32_t millivolts1, millivolts2;
+
+  esp_adc_cal_characteristics_t adc_chars;
+
+  *percent = 100;
+  pinMode(VOLTAGE_PIN, INPUT);
+
+  esp_adc_cal_value_t efuse_config = esp_adc_cal_characterize(
+      ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, VREF, &adc_chars);
+  if (efuse_config != ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
+    logOut(2, (char*)"ALERT, ADC calibration failed");
+  }
+
+  millivolts1 = analogReadMilliVolts(VOLTAGE_PIN);
+
+  uint32_t raw = analogRead(VOLTAGE_PIN);
+  millivolts2 = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
+  sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld",
+    millivolts1, raw, millivolts2);
+  logOut(2,outstring);
+
+  // Original, works well on Lolin32
+  readval = analogRead(VOLTAGE_PIN);// / 4096.0 * 7.23;      // LOLIN D32 (no voltage divider need already fitted to board.or NODEMCU ESP32 with 100K+100K voltage divider
+  *volt= (float)readval / 4096.0 * 7.23;
+  //float voltage = analogRead(39) / 4096.0 * 7.23;    // NODEMCU ESP32 with 100K+100K voltage divider added
+  //float voltage = analogRead(A0) / 4096.0 * 4.24;    // Wemos / Lolin D1 Mini 100K series resistor added
+  //float voltage = analogRead(A0) / 4096.0 * 5.00;    // Ardunio UNO, no voltage divider required
+  
+  *percent = 2808.3808 * pow(*volt, 4) - 43560.9157 * pow(*volt, 3) + 252848.5888 * pow(*volt, 2) - 650767.4615 * *volt + 626532.5703;
+  
+  if(*percent<0) *percent =0; // to ensure that the above formula does not produce negative values, as it does slightly above 3.5V
+
+  if (*volt > 4.19) *percent = 100;
+  else if (*volt <= 3.50) *percent = 0;
+
+  sprintf(outstring,"GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
+      VOLTAGE_PIN,readval, *volt,*percent);
+  logOut(2,outstring);
+  return(true);
+}
+
+
 /**************************************************!
    @brief    handleButtonInterrupt()
    @details  interrupt handling for button pressed on rotary encoder
@@ -160,6 +207,7 @@ void IRAM_ATTR handleButtonInterrupt() {
   if (now - lastInterruptTime > 400) {
     buttonEvent = true;
     lastInterruptTime = now;
+    doParallelBuzzer(1,50,0); // buzzer feedback
   }
 }
 
@@ -441,17 +489,65 @@ void buzzer(uint16_t number, uint16_t duration, uint16_t interval)
   //logOut(2, (char*)"End of Buzzer");
 }    
 
+/**************************************************!
+   @brief    parallelBuzzer()
+   @details  Function to create a buzzer sound in parallel thread. Self-ending
+   @param    uint16_t number    : how many buzzes
+   @param    uint16_t duration : how long in ms for every buzz
+   @param    uint16_t interval : how long in ms between buzzes
+   @return   void
+***************************************************/
+struct buzzerDataType
+{
+  uint16_t number; 
+  uint16_t duration; 
+  uint16_t interval;
+};
+buzzerDataType buzzerParam;
+
+void parallelBuzzer(void *param)
+{
+  uint16_t i;
+  buzzerDataType *buzzerParam ;
+  for(i=0; i<((buzzerDataType*)param)->number; i++){
+    pinMode(BUZZER_PIN, OUTPUT);
+    digitalWrite(BUZZER_PIN, HIGH); // buzzer on
+    delay(((buzzerDataType*)param)->duration);
+    digitalWrite(BUZZER_PIN, LOW); // buzzer off
+    delay(((buzzerDataType*)param)->interval);
+  }  
+
+  vTaskDelete(NULL);
+}    
+
+void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval)
+{
+  buzzerParam.number   = number;
+  buzzerParam.duration = duration;
+  buzzerParam.interval = interval;
+
+  xTaskCreatePinnedToCore(
+    parallelBuzzer,   // function
+    "parallelBuzzer", // name
+    2048,             // stack size
+    (void *)&buzzerParam,           // parameter
+    1,                // priority
+    NULL,             // task handle (not needed)
+    0                 // core (0 or 1) (do not use 0 if Wifi or BLE active, core 0 is busy)
+  );
+}
+
 
 /**************************************************!
    @brief    testRotary()
    @details  Function to test rotary encoder
-   @param    boolean *rotButtonPressed : state of rotary encoder button
+   @param    boolean *rotButtonPressed : state of rotary encoder button (presently disabled!)
    @param    int64_t *rotPosition : position of rotary encoder
    @return   void
 ***************************************************/
 void testRotary(boolean *rotButtonPressed, int64_t *rotPosition)
 {
-  //logOut(2, "testRotary: start");
+  logOut(2, (char*)"testRotary: start");
   static long degrees;
   //static bool lastButtonState = HIGH;
   //static bool buttonPressed = false;
@@ -547,14 +643,27 @@ void setup()
       testDisplay();  
 
     if(testBuzzer)        // buzzer test
-      buzzer(1,100,500); 
+      //buzzer(1,100,500); 
+      doParallelBuzzer(1,100,500);
     if(testDisplayModule) // display test, original from WeAct (manufacturer of the ePaper display)
       testDisplayWeAct();
     if(testBuzzer){       // buzzer test
+      logOut(2,(char*)"Testing buzzer");
       for(int i=0; i<5; i++)
       {
-         buzzer(1,100,500-i*75); // buzzer test
+         //buzzer(1,100,500-i*75); // buzzer test
+         doParallelBuzzer(1,100,500);
+         delay(1000); // needed for parallel buzzer
       } 
+    }  
+
+    boolean buttonPressed = false; 
+    int64_t encoderPos = 0;
+    if(testRotaryEncoder){
+      for(int i=0;i<30;i++) {
+        testRotary(&buttonPressed, &encoderPos );
+        delay(500);
+      }  
     }  
 
     if(testGPSModule){
@@ -788,7 +897,11 @@ void updatewData() // helper function to populate the wData structure
      wData.alertCount += 10.0* (wData.actAnchorDistanceM / wData.alarmDistanceM -1.0);
   else
     wData.alertCount = 0.0;
-  if(wData.alertCount >= wData.alertThreshold)     // alarm!
+  if(  (wData.alertCount >= wData.alertThreshold)       // alarm if alert counter above threshold
+    || (wData.batteryVoltage < BAT_VOLTAGE_THRESHOLD)   // or alarm if battery voltage too low
+    || (wData.batteryPercent < BAT_PERCENT_THRESHOLD)   // or alarm if battery percentage too low
+    || (!gps.location.isValid())                        // or alarm if no GPS reception  
+  )  
     wData.alertON = true;
   else
     wData.alertON = false;
@@ -808,6 +921,10 @@ void doRoutineWork()
   ret = print_wakeup_reason(); // determine reason for wakeup
   if(ret == ESP_SLEEP_WAKEUP_EXT0)
     handleExt0Wakeup();
+
+  readBatteryVoltage(&wData.batteryPercent, &wData.batteryVoltage);                  // Auslesen der Batteriespannung  
+  //wData.batteryPercent = volt;
+  //wData.batteryPercent = percent;
 
   switch(wData.currentMode){
     case MODE_STARTED:    // just started
@@ -923,34 +1040,16 @@ void doRoutineWork()
           double startLat = 0.0; double startLon = 0.0;
           sprintf(outstring,"doRoutineWork: MODE_RUNNING ... %d", cnt++);
           logOut(2, outstring);
-          if(gps.location.isUpdated() && gps.location.isValid()){ 
-            //wData.actLat = gps.location.lat();
-            //wData.actLon = gps.location.lng();
-            //wData.actHDOP= gps.hdop.hdop();
-            //wData.SatCnt = gps.satellites.value();
+          if((gps.location.isUpdated() && gps.location.isValid()) || wData.alertON){ // alert also if no valid position 
             updatewData();
             sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current GPS position Lat: %6.6f Lon: %6.6f", 
                 wData.actLat, wData.actLon);                
             logOut(2, outstring);
-            // calculate distance between actual position and anchor position
-            //wData.actAnchorDistanceM = TinyGPSPlus::distanceBetween(wData.actLat,wData.actLon, wData.anchorLat, wData.anchorLon);
-            // calculate bearing from first to second position. Here: from anchor to actual position of boat
-            //wData.actAnchorBearingDeg = TinyGPSPlus::courseTo(wData.anchorLat, wData.anchorLon, wData.actLat,wData.actLon);
-
-            // calc alert counter, based on deviation
-            // 10% over adds 1, 30% over adds 3, 100% over adds 10
-            /*
-            if(wData.actAnchorDistanceM > wData.alarmDistanceM)
-               wData.alertCount += 10.0* (wData.actAnchorDistanceM / wData.alarmDistanceM -1.0);
-            else
-              wData.alertCount = 0.0;
-            if(wData.alertCount >= wData.alertThreshold)     // alarm!
-              wData.alertON = true;
-            else
-              wData.alertON = false;
-            */  
+            
             if(wData.alertON){    
               buzzer(3, 100,50);
+              //doParallelBuzzer(3, 100,50);
+              logOut(2,(char*)"!!!!!!!!!!! Alert is ON !!!!!!!!!!!");
               smartDelay(1000);
             }  
             else{
@@ -981,10 +1080,6 @@ void doRoutineWork()
 
 } // doRoutineWork
 
-void checkEverything()
-{
-  for(int i=0;)
-}
 
 /*****************************************************************************! 
   @brief  checkButton()    
@@ -998,7 +1093,8 @@ void checkButton()
     if(!wData.buttonPressed){
       logOut(2, (char*)"Interrupt: Rotary encoder button released.");
       wData.buttonPressed = true;
-      buzzer(1,50,0); // buzzer feedback
+      //buzzer(1,50,0); // buzzer feedback
+      doParallelBuzzer(1,50,0);
     } 
     sprintf(outstring,"Interrupt: Button wurde gedrückt");
     logOut(2, outstring);
@@ -1018,7 +1114,7 @@ void loop()
   int buttonState = button.read();
   if(buttonState == LOW ){
     logOut(2, (char*)"Rotary encoder button pressed.");
-    buzzer(1,50,0); // buzzer feedback
+    //buzzer(1,50,0); // buzzer feedback
     wData.buttonPressed = true;
   }
   */

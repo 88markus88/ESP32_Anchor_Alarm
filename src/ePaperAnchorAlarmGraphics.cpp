@@ -365,6 +365,11 @@ void inputFirstScreen()
     display.setCursor(x, y);
     sprintf(outstring,"%6.5f %6.5f",wData.actLat,wData.actLon);
     display.print(outstring);
+    x=0; y=3*HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
+    logOut(2, outstring);
+    display.print(outstring);
     x=0; y=5*HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Anchor Bearg:");
@@ -481,6 +486,12 @@ void drawInputHeader(){
     logOut(2, outstring);
     display.print(outstring);
     
+    x=0; y=3*HEADER_FONT_SIZE-1;
+    display.setCursor(x, y);
+    sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
+    logOut(2, outstring);
+    display.print(outstring);
+
     /*
     x=0; y=3*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
@@ -575,13 +586,24 @@ void drawWatchScreen(){
     display.setCursor(x, y);
     display.print(outstring);
 
-    sprintf(outstring,"%3.0f",wData.alarmDistanceM);
+    x=0; y=4 * HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"%3.2fV",wData.batteryVoltage);
+    display.print(outstring);
+
+    sprintf(outstring,"%3.0f%%",wData.batteryPercent);
     display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
     x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
     display.setCursor(x, y);
     display.print(outstring);
 
-    x=0; y=4 * HEADER_FONT_SIZE;
+    sprintf(outstring,"%3.0f",wData.alarmDistanceM);
+    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+    x=SCREEN_WIDTH - tbw-3; y=5 * HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    display.print(outstring);
+
+    x=0; y=5 * HEADER_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%ld",wData.startCounter);
     display.print(outstring);

@@ -18,7 +18,7 @@
 #define INPUTDATA_WIDTH         SCREEN_WIDTH - INPUTDATA_X_POS-1
 #define INPUTDATA_HEIGHT        SCREEN_WIDTH - INPUTDATA_Y_POS-1
 
-#define NUM_INPUTDATA_LINES     5
+#define NUM_INPUTDATA_LINES     8
 
 // Watch screen parameters
 #define CIRCLE_RADIUS         60

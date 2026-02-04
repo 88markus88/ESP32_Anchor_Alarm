@@ -185,9 +185,9 @@ int readBatteryVoltage(float* percent, float* volt)
   if (*volt > 4.19) *percent = 100;
   else if (*volt <= 3.50) *percent = 0;
 
-  sprintf(outstring,"GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
-      VOLTAGE_PIN,readval, *volt,*percent);
-  logOut(2,outstring);
+  //sprintf(outstring,"GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
+  //    VOLTAGE_PIN,readval, *volt,*percent);
+  //logOut(2,outstring);
   return(true);
 }
 
@@ -635,7 +635,9 @@ void setup()
     wData.alarmDistanceM  = d_alarmDistanceM;  
     wData.drawCount       = 0;
     wData.startCounter    = 0;
-  }
+    wData.targetMeasurementIntervalSec = d_targetMeasurementIntervalSec;
+    wData.verbosity       = d_verbosity;
+    wData.graphWeight     = d_graphWeight;  }
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // short display test
@@ -843,7 +845,53 @@ boolean handleParamChange(int trianglePos)
         }  // encoder
       } 
       break;   
-    case 4: // exit parameter change mode
+    case 4: // sleep time
+      {
+        int64_t encoderPos = -encoder.getCount();
+        if(encoderPos != 0){
+          wData.targetMeasurementIntervalSec += 5*encoderPos; // each step is 5 seconds
+          if(wData.targetMeasurementIntervalSec < 1)
+            wData.targetMeasurementIntervalSec = 1; // minimum 1 second
+          sprintf(outstring,"handleParamChange: targetMeasurementIntervalSec to %ld [s]", wData.targetMeasurementIntervalSec);
+          logOut(2, outstring);
+          encoder.setCount(0); // reset encoder count
+          drawInputData(); // redraw input data
+        }  // encoder
+      }
+      break; 
+    case 5: // detail verbosity
+      {
+        int64_t encoderPos = -encoder.getCount();
+        if(encoderPos != 0){
+          wData.verbosity = (enum verbosityType)(wData.verbosity + (verbosityType)encoderPos); // each step is 1
+          if(wData.verbosity > HI) 
+            wData.verbosity = LO; // handle runover, valid are 0..2
+          if(wData.verbosity < LO) 
+            wData.verbosity = HI; // handle runover, valid are 0..2  
+          sprintf(outstring,"handleParamChange: verbosity to %ld [s]", wData.verbosity);
+          logOut(2, outstring);
+          encoder.setCount(0); // reset encoder count
+          drawInputData(); // redraw input data
+        }  // encoder
+      }
+      break; 
+    case 6: // graph weight  
+      {
+        int64_t encoderPos = -encoder.getCount();
+        if(encoderPos != 0){
+          wData.graphWeight = (enum graphWeightType)(wData.graphWeight + (graphWeightType)encoderPos); // each step is 1 
+          if(wData.graphWeight > HEAVY) 
+            wData.graphWeight = MINIM; // handle runover, valid are 0..2
+          if(wData.graphWeight < MINIM) 
+            wData.graphWeight = HEAVY; // handle runover, valid are 0..2  
+          sprintf(outstring,"handleParamChange: graphWeight to %ld [s]", wData.graphWeight);
+          logOut(2, outstring);
+          encoder.setCount(0); // reset encoder count
+          drawInputData(); // redraw input data
+        }  // encoder
+      }
+      break; 
+    case 7: // exit parameter change mode
       {
         logOut(2, (char*)"handleParamChange: !!!!!!!!! EXIT !!!!!!!!!");
         return false;
@@ -891,20 +939,42 @@ void updatewData() // helper function to populate the wData structure
   // calculate bearing from first to second position. Here: from anchor to actual position of boat
   wData.actAnchorBearingDeg = TinyGPSPlus::courseTo(wData.anchorLat, wData.anchorLon, wData.actLat,wData.actLon);
 
+  // first check for distance from anchor
   // calc alert counter, based on deviation
   // 10% over adds 1, 30% over adds 3, 100% over adds 10
   if(wData.actAnchorDistanceM > wData.alarmDistanceM)
      wData.alertCount += 10.0* (wData.actAnchorDistanceM / wData.alarmDistanceM -1.0);
   else
     wData.alertCount = 0.0;
-  if(  (wData.alertCount >= wData.alertThreshold)       // alarm if alert counter above threshold
-    || (wData.batteryVoltage < BAT_VOLTAGE_THRESHOLD)   // or alarm if battery voltage too low
-    || (wData.batteryPercent < BAT_PERCENT_THRESHOLD)   // or alarm if battery percentage too low
-    || (!gps.location.isValid())                        // or alarm if no GPS reception  
-  )  
+
+  wData.alertON = false;  // start out with no alert
+  strcpy(wData.alertReasonString,"None");
+  wData.alertReason = 0;
+
+  if(wData.alertCount >= wData.alertThreshold){       // alarm if alert counter above threshold
     wData.alertON = true;
-  else
-    wData.alertON = false;
+    wData.alertReason += 1;
+    strcpy(wData.alertReasonString, "Anchor Distance");
+  }  
+
+  if(wData.batteryVoltage < BAT_VOLTAGE_THRESHOLD){   // or alarm if battery voltage too low 
+    wData.alertON = true;
+    wData.alertReason += 2;
+    strcpy(wData.alertReasonString, "Battery Voltage Low");
+  }  
+
+  if(wData.batteryPercent < BAT_PERCENT_THRESHOLD){ 
+    wData.alertReason += 4;
+    wData.alertON = true;
+    strcpy(wData.alertReasonString, "Battery Percent Low");
+  }
+
+  if(!gps.location.isValid()){                        // or alarm if no GPS reception   
+    wData.validGPSLocation = false;  
+    wData.alertON = true;
+    wData.alertReason += 8;
+    strcpy(wData.alertReasonString, "Invalid GPS Location");
+  }    
 }
 
 void doRoutineWork()
@@ -926,8 +996,12 @@ void doRoutineWork()
   //wData.batteryPercent = volt;
   //wData.batteryPercent = percent;
 
+  sprintf(outstring,"doRoutineWork in wData.currentMode:  %d", wData.currentMode);
+  logOut(2, outstring);
+  delay(100);
+
   switch(wData.currentMode){
-    case MODE_STARTED:    // just started
+    case MODE_STARTED:    // 0 just switched on
       { 
         do{
           sprintf(outstring,"doRoutineWork: MODE_STARTED, waiting for GPS fix... %d", cnt);
@@ -943,7 +1017,7 @@ void doRoutineWork()
           wData.currentMode = MODE_SELECTLINE; // to to input mode if gps is valid
       }
       break;
-    case MODE_SELECTLINE:    // input mode to set position of triangle
+    case MODE_SELECTLINE:    // 1 input mode to set position of triangle
       {
         int64_t encoderPos;
         sprintf(outstring,"doRoutineWork: MODE_SELECTLINE ... %d", cnt);
@@ -970,8 +1044,8 @@ void doRoutineWork()
             else if(encoderPos < 0)
               trianglePos ++; // increase
             if(trianglePos < 0) // wrap around
-              trianglePos = NUM_INPUTDATA_LINES-1;  // max of five positions 0..4
-            trianglePos = (trianglePos) % NUM_INPUTDATA_LINES; // five positions
+              trianglePos = NUM_INPUTDATA_LINES-1;  // max of 8 positions 0..7
+            trianglePos = (trianglePos) % NUM_INPUTDATA_LINES; // 8 positions
             sprintf(outstring,"doRoutineWork: Encoder triggered. encoderPos: %ld New trianglePos: %d", (int32_t)encoderPos, trianglePos);
             logOut(2, outstring);
             encoder.setCount(0); // reset encoder count
@@ -986,7 +1060,7 @@ void doRoutineWork()
         }
       }
       break;
-    case MODE_CHANGEPARAM:    // input mode to set a specific parameter, defined by last triangePos
+    case MODE_CHANGEPARAM:    // 2 input mode to set a specific parameter, defined by last triangePos
       {
         if(!handleParamchanges) // do not draw triangle if already in param change mode, takes too long
         {
@@ -1036,37 +1110,49 @@ void doRoutineWork()
       break;  
     case MODE_RUNNING:    // anchor alarm active
       {
-        if(!wData.buttonPressed){
+        if(!wData.buttonPressed){ // button pressed means: quiet alarm, back to menu
           double startLat = 0.0; double startLon = 0.0;
           sprintf(outstring,"doRoutineWork: MODE_RUNNING ... %d", cnt++);
           logOut(2, outstring);
-          if((gps.location.isUpdated() && gps.location.isValid()) || wData.alertON){ // alert also if no valid position 
-            updatewData();
-            sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current GPS position Lat: %6.6f Lon: %6.6f", 
-                wData.actLat, wData.actLon);                
-            logOut(2, outstring);
-            
-            if(wData.alertON){    
-              buzzer(3, 100,50);
-              //doParallelBuzzer(3, 100,50);
-              logOut(2,(char*)"!!!!!!!!!!! Alert is ON !!!!!!!!!!!");
-              smartDelay(1000);
-            }  
-            else{
-              // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
-              targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;
-              gotoDeepSleep(BUTTON1, targetSleepUSec); // go to deep sleep. parameters: sleeptime in us, button to wakeup from  
-              //smartDelay(5000);
-            }
-
-            sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current distance anchor-boat: %4.2f m Bearing anchor-boat: %4.2f°", 
-                wData.actAnchorDistanceM, wData.actAnchorBearingDeg); 
-            logOut(2, outstring);
-          } 
+          
+          // we need a bit of time to get the GPS data
+          for(int i=0; i<3; i++)
+          {  
+            if((gps.location.isUpdated() && gps.location.isValid())) 
+              break;
+            smartDelay(1000);  
+          }    
+          
+          updatewData();
+          sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current GPS position Lat: %6.6f Lon: %6.6f", 
+              wData.actLat, wData.actLon);                
+          logOut(2, outstring);
+          
+          sprintf(outstring,"doRoutineWork: MODE_RUNNING: Current distance anchor-boat: %4.2f m Bearing anchor-boat: %4.2f°", 
+              wData.actAnchorDistanceM, wData.actAnchorBearingDeg); 
+          logOut(2, outstring);
+          //} if 
           drawWatchScreen();
+          
+          if(wData.alertON){    
+            buzzer(3, 100,50);
+            //doParallelBuzzer(3, 100,50);
+            sprintf(outstring,"!!!!!!!!!!!! ALERT Reason %d %s !!!!!!!!!!!!",wData.alertReason, wData.alertReasonString);
+            logOut(2,outstring);
+            smartDelay(1000);
+          }  
+          else{
+            // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
+            targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;
+            gotoDeepSleep(BUTTON1, targetSleepUSec); // go to deep sleep. parameters: sleeptime in us, button to wakeup from  
+            //smartDelay(5000);
+          } // else alert on
+
+
         }
         else{ // button pressed
           wData.buttonPressed = false; // reset button pressed state  
+          wData.alertON = false;       // reset alarm
           wData.currentMode = MODE_STARTED; // go to start mode
         }    
       }

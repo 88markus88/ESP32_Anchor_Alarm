@@ -25,11 +25,26 @@ enum mainLoopMode {
   MODE_ALARN = 4
 };
 
+enum verbosityType{
+  LO  = 0,
+  MED = 1,
+  HI  = 2
+};
+
+enum graphWeightType{
+  MINIM  = 0,
+  MEDIUM = 1,
+  HEAVY  = 2
+};
+
 // defaults
 #define d_anchorBearingDeg 45 
 #define d_anchorDistanceM  23
 #define d_alertThreshold   10 
 #define d_alarmDistanceM   40  
+#define d_targetMeasurementIntervalSec 20
+#define d_verbosity       HI
+#define d_graphWeight     HEAVY
 
 // Battery Thresholds for alert
 #define BAT_VOLTAGE_THRESHOLD 3.6
@@ -40,43 +55,49 @@ struct measurementData
   // admin stuff
   bool justInitialized;   // indicator for the fact that software has just been initialized (test data)
   bool dataPresent;       // for simulation. do not create simulation data if this is true
-  int32_t graphicsType; // determine which graph is shown  0: pressure, 1: temperature, 2: humidity
-  int32_t startCounter;  // total counter for starts of ESP32
-  int32_t dischgCnt;    // counter for starts of ESP32 since last charge
+  int32_t graphicsType;   // determine which graph is shown  0: pressure, 1: temperature, 2: humidity
+  int32_t startCounter;   // total counter for starts of ESP32
+  int32_t dischgCnt;      // counter for starts of ESP32 since last charge
   struct timeval lastMeasurementTimestamp;  // time value when last measurement has been taken
-  struct timeval last2MeasurementTimestamp;  // time value when measurement before last has been taken
+  struct timeval last2MeasurementTimestamp; // time value when measurement before last has been taken
   float actSecondsSinceLastMeasurement;     // seconds elapsed since last measurement, before last deep sleep
   bool applyInversion;   // if true, white on black. otherwise black on white
+
+  verbosityType   verbosity;   // determines how much detail is shown in screens
+  graphWeightType graphWeight; // determines how thick lines and symbols are schown in screens
   
   bool buttonPressed;    // remembers if button has been pressed to acknowledge an alert
   bool alertON;          // remembers if an alert has been triggered
+  bool validGPSLocation; // true if valid gps location, otherwise false
   mainLoopMode currentMode; // current main loop mode
 
-  int32_t targetMeasurementIntervalSec=20;    // sleep time target in seconds, controls the measurement
-  int32_t lastTargetSleeptime;             // last target standard sleep time in seconds
-  int64_t lastActualSleeptimeAfterMeasUsec;         // this is the number in usec actually used to set the sleep timer after last measurement
-  int64_t lastActualSleeptimeNotMeasUsec;         // this is the number in usec actually used to set the sleep timer when no measurement
+  int32_t targetMeasurementIntervalSec;       // sleep time target in seconds, controls the measurement
+  int32_t lastTargetSleeptime;                // last target standard sleep time in seconds
+  int64_t lastActualSleeptimeAfterMeasUsec;   // this is the number in usec actually used to set the sleep timer after last measurement
+  int64_t lastActualSleeptimeNotMeasUsec;     // this is the number in usec actually used to set the sleep timer when no measurement
 
   float anchorBearingDeg;      // anchor angle in degrees
   float anchorDistanceM;       // anchor distance in meters
-  int32_t alertThreshold;       // number of position deviations before alarm is triggered
+  int32_t alertThreshold;      // number of position deviations before alarm is triggered
   float alarmDistanceM;        // alarm distance in meters
 
-  double anchorLat;               // anchor latitude
-  double anchorLon;               // anchor longitude
+  double anchorLat;            // anchor latitude
+  double anchorLon;            // anchor longitude
 
-  int32_t drawCount;              // counter for display updates
+  int32_t drawCount;           // counter for display updates
   int drawBuffer[maxDrawBufferLen][2];         // buffer for display data
-  double actLat;                  // actual latitude
-  double actLon;                  // actual longitude
-  float actAnchorBearingDeg;        // anchor angle in degrees
-  float actAnchorDistanceM;       // anchor distance in meters
-  double actHDOP;                 // GPS HDOP
-  int32_t SatCnt;                 // GPS visible satellites
-  double alertCount;              // counter for alert condition
+  double actLat;               // actual latitude
+  double actLon;               // actual longitude
+  float actAnchorBearingDeg;   // anchor angle in degrees
+  float actAnchorDistanceM;    // anchor distance in meters
+  double actHDOP;              // GPS HDOP
+  int32_t SatCnt;              // GPS visible satellites
+  double alertCount;           // counter for alert condition
+  char alertReasonString[30];  // reason for alert
+  int32_t alertReason;         // bitmask rason for alert 
 
-  float batteryVoltage;
-  float batteryPercent;
+  float batteryVoltage;        // Voltage of battery
+  float batteryPercent;        // Percentage of charge remaining in battery, calculated
 };
 extern RTC_DATA_ATTR measurementData wData;
 

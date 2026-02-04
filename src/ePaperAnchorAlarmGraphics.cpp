@@ -388,6 +388,19 @@ void inputFirstScreen()
     display.print(outstring);
     x=0; y=9*HEADER_FONT_SIZE;
     display.setCursor(x, y);
+    sprintf(outstring,"Sleep Time  :");
+    display.print(outstring);
+    x=0; y=10*HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"Detail Info :");
+    display.print(outstring);
+    x=0; y=11*HEADER_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"Graph Weight:");
+    display.print(outstring);
+
+    x=0; y=12*HEADER_FONT_SIZE;
+    display.setCursor(x, y);
     sprintf(outstring,"Exit        :");
     display.print(outstring);
   }
@@ -540,6 +553,44 @@ void drawInputData(){
     sprintf(outstring,"%3.0f",wData.alarmDistanceM);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
+
+    x=150; y=9*HEADER_FONT_SIZE-1;
+    display.setCursor(x, y);
+    sprintf(outstring,"%3ld",wData.targetMeasurementIntervalSec);
+    //sprintf(outstring,"%3d",cnt);
+    display.print(outstring);
+    x=150; y=10*HEADER_FONT_SIZE-1;
+    display.setCursor(x, y);
+    switch(wData.verbosity){
+      case LO:
+        sprintf(outstring,"LOW");
+      break;
+      case MED:
+        sprintf(outstring,"MED");
+      break;
+      case HI:
+        sprintf(outstring,"HIGH");
+      break;
+    }
+    //sprintf(outstring,"%3d",wData.verbosity);
+    //sprintf(outstring,"%3d",cnt);
+    display.print(outstring);
+    x=150; y=11*HEADER_FONT_SIZE-1;
+    display.setCursor(x, y);
+    switch(wData.graphWeight){
+      case MINIM:
+        sprintf(outstring,"MIN");
+      break;
+      case MEDIUM:
+        sprintf(outstring,"MED");
+      break;
+      case HEAVY:
+        sprintf(outstring,"HVY");
+      break;
+    }
+    //sprintf(outstring,"%3d",wData.graphWeight);
+    //sprintf(outstring,"%3d",cnt);
+    display.print(outstring);    
   }
   while (display.nextPage());
 }
@@ -570,53 +621,164 @@ void drawWatchScreen(){
     #endif  
     display.print(outstring);
 
-    x=0; y=2 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
-    display.print(outstring);
+    if(wData.verbosity == HI){
+      x=0; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
+      display.print(outstring);
 
-    x=0; y=3 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
-    display.print(outstring);
+      x=0; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
+      display.print(outstring);
+      
+      sprintf(outstring,"%3.1f",wData.alertCount);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      x=0; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%3.2fV",wData.batteryVoltage);
+      display.print(outstring);
+
+      sprintf(outstring,"%3.0f%%",wData.batteryPercent);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      sprintf(outstring,"%3.0f",wData.alarmDistanceM);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=5 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      x=0; y=5 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%ld",wData.startCounter);
+      display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
+      display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      display.print(outstring);
+    } // verbosity HI
     
-    sprintf(outstring,"%3.1f",wData.alertCount);
-    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
-    x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    display.print(outstring);
+    if(wData.verbosity == MED){
+      /*
+      x=0; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
+      display.print(outstring);
+      */
+      x=0; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"Sat:%d %3.2f",wData.SatCnt, wData.actHDOP);
+      display.print(outstring);
+      
+      sprintf(outstring,"%3.1f",wData.alertCount);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
 
-    x=0; y=4 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"%3.2fV",wData.batteryVoltage);
-    display.print(outstring);
+      x=0; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"Bat:%3.2fV",wData.batteryVoltage);
+      display.print(outstring);
 
-    sprintf(outstring,"%3.0f%%",wData.batteryPercent);
-    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
-    x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    display.print(outstring);
+      sprintf(outstring,"%3.0f%%",wData.batteryPercent);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
 
-    sprintf(outstring,"%3.0f",wData.alarmDistanceM);
-    display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
-    x=SCREEN_WIDTH - tbw-3; y=5 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    display.print(outstring);
+      sprintf(outstring,"R:%2.0f",wData.alarmDistanceM);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
 
-    x=0; y=5 * HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"%ld",wData.startCounter);
-    display.print(outstring);
+      x=0; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%ld",wData.startCounter);
+      display.print(outstring);
+      /*
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
+      display.print(outstring);
+      */
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"%4.1fm        %3.0f*",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      display.print(outstring);      
+    } // verbosity MED
 
-    x=0; y=SCREEN_HEIGHT - 1;
-    display.setCursor(x, y);
-    sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
-    display.print(outstring);
+    if(wData.verbosity == LO){
+      /*
+      x=0; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
+      display.print(outstring);
+      
+      x=0; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
+      display.print(outstring);
+      */
+      x=0; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"AlertCnt:",wData.SatCnt, wData.actHDOP);
+      display.print(outstring);
+      sprintf(outstring,"%3.1f",wData.alertCount);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
 
-    x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
-    display.print(outstring);
+      x=0; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%3.2fV",wData.batteryVoltage);
+      display.print(outstring);
+
+      sprintf(outstring,"%3.0f%%",wData.batteryPercent);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=2 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      sprintf(outstring,"R:%3.0f",wData.alarmDistanceM);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      /*
+      x=0; y=5 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%ld",wData.startCounter);
+      display.print(outstring);
+      */
+      /*
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
+      display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      display.print(outstring);
+      */
+    }
 
     // alarm area circle and center mark
     display.drawCircle(CIRCLE_CENTER_X, CIRCLE_CENTER_Y, CIRCLE_RADIUS, GxEPD_BLACK);
@@ -624,11 +786,12 @@ void drawWatchScreen(){
     display.drawFastVLine(CIRCLE_CENTER_X, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
 
     // make lines bigger
-    display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y - 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
-    display.drawFastVLine(CIRCLE_CENTER_X + 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
-    display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y + 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
-    display.drawFastVLine(CIRCLE_CENTER_X - 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
-
+    if(wData.graphWeight == HEAVY) {
+      display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y - 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+      display.drawFastVLine(CIRCLE_CENTER_X + 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+      display.drawFastHLine(CIRCLE_CENTER_X - CIRCLE_RADIUS/5, CIRCLE_CENTER_Y + 1, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+      display.drawFastVLine(CIRCLE_CENTER_X - 1, CIRCLE_CENTER_Y - CIRCLE_RADIUS/5, 2 * CIRCLE_RADIUS/5, GxEPD_BLACK);
+    }
     
     // cardinal marks
     x=CIRCLE_CENTER_X - 5; y = CIRCLE_CENTER_Y - CIRCLE_RADIUS + HEADER_FONT_SIZE;
@@ -653,13 +816,16 @@ void drawWatchScreen(){
       y=wData.drawBuffer[i][1];
       if(x<SCREEN_WIDTH-2 && y<SCREEN_HEIGHT-2 && x>1 && y>1){ // do not draw beyond screen
         // small circle
-        display.fillCircle(x,y,1,GxEPD_BLACK); 
+        if(wData.graphWeight == HEAVY)
+          display.fillCircle(x,y,1,GxEPD_BLACK); 
         // 3 dots - smaller
-        //display.drawPixel(x, y, GxEPD_BLACK); 
-        //display.drawPixel(1+x, y, GxEPD_BLACK); 
-        //display.drawPixel(x, 1+ y, GxEPD_BLACK); 
-        // 1 dot - very small
-        //display.drawPixel(x, y, GxEPD_BLACK); 
+        if(wData.graphWeight == MEDIUM){
+          display.drawPixel(x, y, GxEPD_BLACK); 
+          display.drawPixel(1+x, y, GxEPD_BLACK); 
+          display.drawPixel(x, 1+ y, GxEPD_BLACK); 
+        }  
+        if(wData.graphWeight == MINIM)
+          display.drawPixel(x, y, GxEPD_BLACK); 
       }
     }
 

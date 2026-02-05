@@ -618,11 +618,11 @@ void readPreferences()
       preferences.putULong("graphWeight", wData.graphWeight);
     }  
     //----- Measurement interval in seconds
-    if(preferences.isKey("targetMIntervSec"))   // sleep time target in seconds, controls the measurement
-      wData.targetMeasurementIntervalSec = preferences.getLong("targetMIntervSec", d_targetMeasurementIntervalSec);
+    if(preferences.isKey("mIntervSec"))   // sleep time target in seconds, controls the measurement
+      wData.targetMeasurementIntervalSec = preferences.getLong("mIntervSec", d_targetMeasurementIntervalSec);
     else {  // set default    
       wData.targetMeasurementIntervalSec = d_targetMeasurementIntervalSec;
-      preferences.putLong("targetMIntervSec", wData.targetMeasurementIntervalSec);
+      preferences.putLong("mIntervSec", wData.targetMeasurementIntervalSec);
     }  
     //----- alarmDistanceM: distance from anchor to increase alarm counter
     if(preferences.isKey("alarmDistanceM"))   // alarm distance in meters
@@ -688,7 +688,7 @@ void writePreferences()
     ret12 =   preferences.putULong("graphWeight", wData.graphWeight);
 
     // measurement interval in seconds
-    ret13 =   preferences.putLong("targetMIntervSec", wData.targetMeasurementIntervalSec);
+    ret13 =   preferences.putLong("mIntervSec", wData.targetMeasurementIntervalSec);
 
     //----- alarm distance and alarm threshold
     ret2 = preferences.putFloat("alarmDistanceM", wData.alarmDistanceM);
@@ -709,7 +709,7 @@ void writePreferences()
     sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f ",
             wData.anchorBearingDeg, wData.anchorDistanceM);
     logOut(2,outstring);       
-    sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d\n", 
+    sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d %d %d \n", 
                 ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5);
     logOut(2,outstring); 
 }

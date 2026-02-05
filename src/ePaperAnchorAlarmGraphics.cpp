@@ -621,7 +621,7 @@ void drawWatchScreen(){
     #endif  
 
     if(wData.alertON){
-      sprintf(outstring,"!!!!! ALARM %d !!!!! ", wData.alertReason);
+      sprintf(outstring,"!!!!! ALARM %d !!!! ", wData.alertReason);
     }
     display.print(outstring);
 

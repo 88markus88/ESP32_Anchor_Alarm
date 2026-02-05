@@ -172,16 +172,17 @@ int readBatteryVoltage(float* percent, float* volt)
       ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, VREF, &adc_chars);
   if (efuse_config != ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
     //logOut(2, (char*)"ALERT, ADC calibration failed");
-    logOut(2, (char*)"Werkseitige ADC Curve-Fitting-Kalibrierung nicht verfügbar, nutze Default VREF.");
+    logOut(3, (char*)"Werkseitige ADC Curve-Fitting-Kalibrierung nicht verfügbar, nutze Default VREF.");
   }
 
   millivolts1 = analogReadMilliVolts(VOLTAGE_PIN);
 
   uint32_t raw = analogRead(VOLTAGE_PIN);
   millivolts2 = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
+  
   sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld",
     millivolts1, raw, millivolts2);
-  logOut(2,outstring);
+  logOut(3,outstring);
 
   // Original, works well on Lolin32
   readval = analogRead(VOLTAGE_PIN);// / 4096.0 * 7.23;      // LOLIN D32 (no voltage divider need already fitted to board.or NODEMCU ESP32 with 100K+100K voltage divider
@@ -796,6 +797,8 @@ void setup()
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
+  // no longer necessary here, handled in readPreferences()
+  /*
   if(wData.currentMode == MODE_STARTED){ //populate missing data from defaults
     logOut(2,(char*)"===== populating defaults");
     wData.anchorBearingDeg= d_anchorBearingDeg;
@@ -807,7 +810,8 @@ void setup()
     wData.targetMeasurementIntervalSec = d_targetMeasurementIntervalSec;
     wData.verbosity       = d_verbosity;
     wData.graphWeight     = d_graphWeight;  }
-
+  */ 
+ 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // short display test
     if(testDisplayModule)

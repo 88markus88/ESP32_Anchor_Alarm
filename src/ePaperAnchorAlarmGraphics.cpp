@@ -545,7 +545,7 @@ void drawInputData(){
     display.print(outstring);
     x=150; y=7*HEADER_FONT_SIZE-1;
     display.setCursor(x, y);
-    sprintf(outstring,"%3d",wData.alertThreshold);
+    sprintf(outstring,"%3d",wData.alarmThreshold);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
     x=150; y=8*HEADER_FONT_SIZE-1;
@@ -619,6 +619,10 @@ void drawWatchScreen(){
     #else
       sprintf(outstring,"ePaperAnchorAlarm");
     #endif  
+
+    if(wData.alertON){
+      sprintf(outstring,"!!!!! ALARM %d !!!!! ", wData.alertReason);
+    }
     display.print(outstring);
 
     if(wData.verbosity == HI){

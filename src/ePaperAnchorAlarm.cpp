@@ -67,7 +67,7 @@ double anchorLon = 0.0;
 #elif CONFIG_IDF_TARGET_ESP32S3
 #define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_TP_FIT
 #endif
-#define VREF 0
+#define VREF 1100  // Reeference voltag. used if no data in EFUSE
 
 // *** lib for permanent data storage in EEPROM
 // https://randomnerdtutorials.com/esp32-save-data-permanently-preferences/
@@ -77,7 +77,7 @@ double anchorLon = 0.0;
 #define READ_PREFERENCES
 #include <Preferences.h>
 Preferences preferences; // object for preference storage in EEPROM
-#define prefIDENT "ePaperAnchorAlarm" // unique identifier for preferences
+#define prefIDENT "AnchorAlarm1" // unique identifier for preferences
 
 // header file mit #defines, forward declarations, "extern" declarations von woanders deklarierten globalen var's
 // globale variablen und alle anderen #includes sind im .cpp file
@@ -157,10 +157,22 @@ int readBatteryVoltage(float* percent, float* volt)
   *percent = 100;
   pinMode(VOLTAGE_PIN, INPUT);
 
+  // Prüft, ob Curve Fitting (TP_FIT) eFuse-Daten vorhanden sind
+  /*
+  if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP_FIT) == ESP_OK) {
+     sprintf(outstring,"eFuse Kalibrierdaten (TP_FIT) vorhanden!");
+  } 
+  else {
+     sprintf(outstring,"Keine eFuse Kalibrierdaten gefunden. Nutze Default-Werte.\n");
+  }
+  logOut(2,outstring);
+  */
+
   esp_adc_cal_value_t efuse_config = esp_adc_cal_characterize(
       ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, VREF, &adc_chars);
   if (efuse_config != ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
-    logOut(2, (char*)"ALERT, ADC calibration failed");
+    //logOut(2, (char*)"ALERT, ADC calibration failed");
+    logOut(2, (char*)"Werkseitige ADC Curve-Fitting-Kalibrierung nicht verfügbar, nutze Default VREF.");
   }
 
   millivolts1 = analogReadMilliVolts(VOLTAGE_PIN);
@@ -582,6 +594,156 @@ void testRotary(boolean *rotButtonPressed, int64_t *rotPosition)
 }
 
 /*****************************************************************************! 
+  @brief  read all preferences values
+  @details remember: short names (max 15 char), otherwise not stored
+  @return void
+*****************************************************************************/
+void readPreferences()
+{
+    preferences.begin(prefIDENT, true);
+    //----- counters etc.
+    //int bytes=preferences.getBytes("prefs", prefs, sizeof(prefs));
+    //----- verbosity
+    if(preferences.isKey("verbosity"))
+      wData.verbosity = (verbosityType)preferences.getULong("applyPCorr", d_verbosity);
+    else {  // set default    
+      wData.verbosity = d_verbosity;
+      preferences.putULong("verbosity", wData.verbosity);
+    }  
+    //----- Graph weight
+    if(preferences.isKey("graphWeight"))
+      wData.graphWeight = (graphWeightType)preferences.getULong("graphWeight", d_graphWeight);
+    else {  // set default    
+      wData.graphWeight = d_graphWeight;
+      preferences.putULong("graphWeight", wData.graphWeight);
+    }  
+    //----- Measurement interval in seconds
+    if(preferences.isKey("targetMIntervSec"))   // sleep time target in seconds, controls the measurement
+      wData.targetMeasurementIntervalSec = preferences.getLong("targetMIntervSec", d_targetMeasurementIntervalSec);
+    else {  // set default    
+      wData.targetMeasurementIntervalSec = d_targetMeasurementIntervalSec;
+      preferences.putLong("targetMIntervSec", wData.targetMeasurementIntervalSec);
+    }  
+    //----- alarmDistanceM: distance from anchor to increase alarm counter
+    if(preferences.isKey("alarmDistanceM"))   // alarm distance in meters
+      wData.alarmDistanceM = preferences.getFloat("alarmDistanceM", d_alarmDistanceM);
+    else {  // set default    
+      wData.alarmDistanceM = d_alarmDistanceM;
+      preferences.putFloat("alarmDistanceM", wData.alarmDistanceM);
+    }  
+    //----- alarmThreshold: if alarm counter is bigger than this threshold: alarm
+    if(preferences.isKey("alarmThreshold"))   // alarm threshold
+      wData.alarmThreshold = preferences.getLong("alarmThreshold", d_alarmThreshold);
+    else {  // set default    
+      wData.alarmThreshold = d_alarmThreshold;
+      preferences.putLong("alarmThreshold", wData.alarmThreshold);
+    }
+
+    //----- anchorBearingDeg: direction to anchor
+    if(preferences.isKey("anchorBearingDeg"))   // anchorBearingDeg
+      wData.anchorBearingDeg = preferences.getFloat("anchorBearingDeg", d_anchorBearingDeg);
+    else {  // set default    
+      wData.anchorBearingDeg = d_anchorBearingDeg;
+      preferences.putFloat("anchorBearingDeg", wData.anchorBearingDeg);
+    }
+
+    //----- anchorDistanceM: distance to anchor
+    if(preferences.isKey("anchorDistanceM"))   // anchorDistanceM
+      wData.anchorDistanceM = preferences.getFloat("anchorDistanceM", d_anchorDistanceM);
+    else {  // set default    
+      wData.anchorDistanceM = d_anchorDistanceM;
+      preferences.putFloat("anchorDistanceM", wData.anchorDistanceM);
+    }
+
+    //int bytes2= preferences.getBytes("teststring2", teststring2, 80); // test
+    //preferences.remove("teststring1"); // remove single key
+    //preferences.clear();  // clear the namespace completely
+    preferences.end(); // close the namespace
+
+    sprintf(outstring,"Read Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
+            wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
+    logOut(2,outstring); 
+    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f ",
+            wData.anchorBearingDeg, wData.anchorDistanceM);
+    logOut(2,outstring);         
+}    
+
+/*****************************************************************************! 
+  @brief  write all preference values
+  @details 
+  @return void
+*****************************************************************************/
+void writePreferences()
+{
+    size_t ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5, ret6, ret7;
+
+    ret1=preferences.begin(prefIDENT, false);
+    if(!ret1){
+      sprintf(outstring,"could open preferences for writing, ret: %d", ret1);
+      logOut(2,outstring);
+    }  
+    
+    // verbosity and graph weight
+    ret11 =   preferences.putULong("verbosity", wData.verbosity);
+    ret12 =   preferences.putULong("graphWeight", wData.graphWeight);
+
+    // measurement interval in seconds
+    ret13 =   preferences.putLong("targetMIntervSec", wData.targetMeasurementIntervalSec);
+
+    //----- alarm distance and alarm threshold
+    ret2 = preferences.putFloat("alarmDistanceM", wData.alarmDistanceM);
+    ret3 = preferences.putLong("alarmThreshold", wData.alarmThreshold);
+
+    //----- distance and bearing to anchor which are set initially
+    ret4 = preferences.putFloat("anchorBearingDeg", wData.anchorBearingDeg);
+    ret5 = preferences.putFloat("anchorDistanceM", wData.anchorDistanceM);
+
+    //int bytes2= preferences.getBytes("teststring2", teststring2, 80); // test
+    //preferences.remove("teststring1"); // remove single key
+    //preferences.clear();  // clear the namespace completely
+    preferences.end(); // close the namespace
+
+    sprintf(outstring,"Wrote Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
+            wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
+    logOut(2,outstring); 
+    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f ",
+            wData.anchorBearingDeg, wData.anchorDistanceM);
+    logOut(2,outstring);       
+    sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d\n", 
+                ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5);
+    logOut(2,outstring); 
+}
+
+
+/*****************************************************************************! 
+  @brief  writeCounterPreferences()
+  @details writes the counter related preference data
+  @return void
+*****************************************************************************/
+/*
+void writeCounterPreferences()
+{
+  int ret11, ret12, ret13;
+  bool writing_counter_prefs = false;
+  writing_counter_prefs = true;
+  sprintf(outstring,"writeCounterPreferences: startCounter %ld dischgCnt %ld prevVoltage %f prevMicrovolt %ld\n", 
+     startCounter, dischgCnt, prevVoltage, prevMicrovolt),
+  logOut(2,outstring);
+  // open preferences namespace in rw mode mode and write preferences infos.
+  preferences.begin(prefIDENT, false);
+
+  // counters and previous microvolts
+  ret11 =   preferences.putULong("startCounter", startCounter);  
+  ret12 =   preferences.putULong("dischargeCnt", dischgCnt);
+  ret13 =   preferences.putULong("prevMicrovolt", prevMicrovolt);
+  preferences.end(); // close the namespace
+  sprintf(outstring,"Write Counter preferences startCounter: %ld %d dischgCnt: %ld %d prevMicrovolt: %ld %d\n", 
+    startCounter, ret11, dischgCnt, ret12, prevMicrovolt, ret13);
+  logOut(2,outstring);        
+}
+*/
+
+/*****************************************************************************! 
   @brief  setup routine
   @details 
   @return void
@@ -595,6 +757,13 @@ void setup()
   sprintf(outstring,"* %s %s - %s ",PROGNAME, VERSION, BUILD_DATE);
   logOut(2,outstring);
   logOut(2,(char*)"**********************************************************");
+
+  #ifdef READ_PREFERENCES
+    // get data from EEPROM using preferences library in readonly mode
+    sprintf(outstring," before readPreferences()");
+    logOut(2,outstring);
+    readPreferences();
+  #endif
 
   // increment start counter
   wData.startCounter++;
@@ -631,7 +800,7 @@ void setup()
     logOut(2,(char*)"===== populating defaults");
     wData.anchorBearingDeg= d_anchorBearingDeg;
     wData.anchorDistanceM = d_anchorDistanceM; 
-    wData.alertThreshold  = d_alertThreshold; 
+    wData.alarmThreshold  = d_alarmThreshold; 
     wData.alarmDistanceM  = d_alarmDistanceM;  
     wData.drawCount       = 0;
     wData.startCounter    = 0;
@@ -796,6 +965,7 @@ boolean handleParamChange(int trianglePos)
           if(wData.anchorBearingDeg < 0)
             wData.anchorBearingDeg += 360;
           wData.anchorBearingDeg = ((int)wData.anchorBearingDeg) % 360; // wrap around
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed
           sprintf(outstring,"handleParamChange: Anchor bearing changed to %3.0f degrees", wData.anchorBearingDeg);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -810,6 +980,7 @@ boolean handleParamChange(int trianglePos)
           wData.anchorDistanceM += -encoderPos; // each step is 1 meter
           if(wData.anchorDistanceM < 5)
             wData.anchorDistanceM = 5; // minimum 5 meters
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: Anchor distance changed to %3.0f meters", wData.anchorDistanceM);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -821,10 +992,11 @@ boolean handleParamChange(int trianglePos)
       {
         int64_t encoderPos = encoder.getCount();
         if(encoderPos != 0){
-          wData.alertThreshold += -encoderPos; // each step is 1
-          if(wData.alertThreshold < 1)
-            wData.alertThreshold = 1; // minimum 1
-          sprintf(outstring,"handleParamChange: Alarm count changed to %ld", wData.alertThreshold);
+          wData.alarmThreshold += -encoderPos; // each step is 1
+          if(wData.alarmThreshold < 1)
+            wData.alarmThreshold = 1; // minimum 1
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
+          sprintf(outstring,"handleParamChange: Alarm count changed to %ld", wData.alarmThreshold);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -838,6 +1010,7 @@ boolean handleParamChange(int trianglePos)
           wData.alarmDistanceM += encoderPos; // each step is 1 meter
           if(wData.alarmDistanceM < 1)
             wData.alarmDistanceM = 1; // minimum 1 meter
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: Alarm distance changed to %3.0f meters", wData.alarmDistanceM);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -852,6 +1025,7 @@ boolean handleParamChange(int trianglePos)
           wData.targetMeasurementIntervalSec += 5*encoderPos; // each step is 5 seconds
           if(wData.targetMeasurementIntervalSec < 1)
             wData.targetMeasurementIntervalSec = 1; // minimum 1 second
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: targetMeasurementIntervalSec to %ld [s]", wData.targetMeasurementIntervalSec);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -868,6 +1042,7 @@ boolean handleParamChange(int trianglePos)
             wData.verbosity = LO; // handle runover, valid are 0..2
           if(wData.verbosity < LO) 
             wData.verbosity = HI; // handle runover, valid are 0..2  
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: verbosity to %ld [s]", wData.verbosity);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -884,6 +1059,7 @@ boolean handleParamChange(int trianglePos)
             wData.graphWeight = MINIM; // handle runover, valid are 0..2
           if(wData.graphWeight < MINIM) 
             wData.graphWeight = HEAVY; // handle runover, valid are 0..2  
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: graphWeight to %ld [s]", wData.graphWeight);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -951,7 +1127,7 @@ void updatewData() // helper function to populate the wData structure
   strcpy(wData.alertReasonString,"None");
   wData.alertReason = 0;
 
-  if(wData.alertCount >= wData.alertThreshold){       // alarm if alert counter above threshold
+  if(wData.alertCount >= wData.alarmThreshold){       // alarm if alert counter above threshold
     wData.alertON = true;
     wData.alertReason += 1;
     strcpy(wData.alertReasonString, "Anchor Distance");
@@ -985,6 +1161,7 @@ void doRoutineWork()
   static int trianglePos = 0; // position of triangle indicator, serves as line selector
   static boolean handleParamchanges = false; // if true, handle parameter changes per line
   uint32_t targetSleepUSec;               // target sleep time in microseconds
+  static uint32_t menuStartTimer = 0;     // millis to remember time when menu has been started
 
   // determine reason for wakeup. if timer wakeup: continue with measurements. 
   // if EXT0 wakeup (button pressed): handleExt0Wakeup()
@@ -1013,8 +1190,10 @@ void doRoutineWork()
         drawInputMainScreen();
         drawInputHeader();
         drawInputData();
-        if(gpsValid)
+        if(gpsValid){
           wData.currentMode = MODE_SELECTLINE; // to to input mode if gps is valid
+          menuStartTimer = millis();            // remember timer when gone to change parameter mode
+        }  
       }
       break;
     case MODE_SELECTLINE:    // 1 input mode to set position of triangle
@@ -1057,7 +1236,37 @@ void doRoutineWork()
           sprintf(outstring,"doRoutineWork: MODE_SELECTLINE: Button pressed. Selected trianglePos: %d", trianglePos);
           logOut(2, outstring);
           wData.currentMode = MODE_CHANGEPARAM; // go to change param mode
+          menuStartTimer = millis();            // remember timer when gone to change parameter mode
         }
+        // safeguared against accicental keypress: if too long in menu, go to routine mode and do measurements
+        if(millis() - menuStartTimer > MAX_MILLIS_IN_MENU){
+          wData.currentMode = MODE_RUNNING; // go to measurement mode
+          // get anchor position, project it and clear graph buffer if not yet available
+          if(wData.actLat > 0.01 && wData.actLon > 0.01){
+            getGPSStartPosition(&wData.actLat, &wData.actLon); // get averaged boat start position from GPS
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Current GPS position Lat: %6.4f Lon: %6.4f", 
+                wData.actLat, wData.actLon);  
+            logOut(2, outstring);
+            // project anchor distance and bearing from start position to get anchor position
+            gps_offset(wData.actLat, wData.actLon, wData.anchorDistanceM, wData.anchorBearingDeg, &wData.anchorLat, &wData.anchorLon);
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor position set to Lat: %6.4f Lon: %6.4f", 
+                wData.anchorLat, wData.anchorLon);
+            logOut(2, outstring);
+            //initialize draw buffer
+            wData.drawCount = 0;
+            for (int i=0; i<maxDrawBufferLen; i++){
+              wData.drawBuffer[i][0] = 0;
+              wData.drawBuffer[i][1] = 0;
+            }
+            updatewData(); // populate wData structure for first run, then no update of gps data expected
+          }
+          else{
+            sprintf(outstring,"leaving menu via timer, re-use existing anchor position %6.6f %6.6f", 
+                wData.actLat, wData.actLon);
+            logOut(2, outstring);    
+          }
+
+        }  
       }
       break;
     case MODE_CHANGEPARAM:    // 2 input mode to set a specific parameter, defined by last triangePos
@@ -1080,6 +1289,7 @@ void doRoutineWork()
           handleParamchanges = false;
           wData.buttonPressed = false; // reset button pressed state  
           wData.currentMode = MODE_SELECTLINE; // go to change param mode
+          menuStartTimer = millis();            // remember timer when gone to change parameter mode
         } 
 
         if(handleParamchanges){
@@ -1106,6 +1316,9 @@ void doRoutineWork()
             wData.currentMode = MODE_RUNNING; // go to change param mode
           }
         }  
+        // safeguared against accicental keypress: if too long in menu, go to routine mode and do measurements
+        if(millis() - menuStartTimer > MAX_MILLIS_IN_MENU)
+          wData.currentMode = MODE_RUNNING; // go to measurement mode
       }
       break;  
     case MODE_RUNNING:    // anchor alarm active
@@ -1164,6 +1377,17 @@ void doRoutineWork()
     }
   }  
 
+  #ifdef WRITE_PREFERENCES
+  // write counter preferences
+  // if(startCounter % d_counterWriteInterval == 0){
+  //   writeCounterPreferences();
+  // }
+  // write all preferences, incl. counter
+    if(wData.preferencesChanged){
+      writePreferences();
+      wData.preferencesChanged = false;
+    }
+  #endif
 } // doRoutineWork
 
 

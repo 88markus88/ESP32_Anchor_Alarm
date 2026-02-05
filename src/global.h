@@ -40,7 +40,7 @@ enum graphWeightType{
 // defaults
 #define d_anchorBearingDeg 45 
 #define d_anchorDistanceM  23
-#define d_alertThreshold   10 
+#define d_alarmThreshold   10 
 #define d_alarmDistanceM   40  
 #define d_targetMeasurementIntervalSec 20
 #define d_verbosity       HI
@@ -49,6 +49,9 @@ enum graphWeightType{
 // Battery Thresholds for alert
 #define BAT_VOLTAGE_THRESHOLD 3.6
 #define BAT_PERCENT_THRESHOLD 10
+
+// max. time in milliseconds to remain in menu before moving to MODE_RUNNING
+#define MAX_MILLIS_IN_MENU 60*1000
 
 struct measurementData
 {
@@ -78,7 +81,7 @@ struct measurementData
 
   float anchorBearingDeg;      // anchor angle in degrees
   float anchorDistanceM;       // anchor distance in meters
-  int32_t alertThreshold;      // number of position deviations before alarm is triggered
+  int32_t alarmThreshold;      // number of position deviations before alarm is triggered
   float alarmDistanceM;        // alarm distance in meters
 
   double anchorLat;            // anchor latitude
@@ -98,6 +101,8 @@ struct measurementData
 
   float batteryVoltage;        // Voltage of battery
   float batteryPercent;        // Percentage of charge remaining in battery, calculated
+
+  bool preferencesChanged;     // flag to indicate that a preference has been changed
 };
 extern RTC_DATA_ATTR measurementData wData;
 

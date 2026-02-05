@@ -811,11 +811,17 @@ void setup()
     wData.verbosity       = d_verbosity;
     wData.graphWeight     = d_graphWeight;  }
   */ 
- 
+
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // short display test
     if(testDisplayModule)
       testDisplay();  
+
+    // show welcome message on ePaper
+    char show[30];
+    sprintf(show,"AnchorAlarm %s", VERSION);
+    showWelcomeMessage(true, show);
+    showWelcomeMessage(false, (char*)"Buzzer Test");
 
     if(testBuzzer)        // buzzer test
       //buzzer(1,100,500); 
@@ -832,9 +838,11 @@ void setup()
       } 
     }  
 
+
     boolean buttonPressed = false; 
     int64_t encoderPos = 0;
     if(testRotaryEncoder){
+      showWelcomeMessage(false, (char*)"Encoder Test");
       for(int i=0;i<30;i++) {
         testRotary(&buttonPressed, &encoderPos );
         delay(500);
@@ -842,6 +850,7 @@ void setup()
     }  
 
     if(testGPSModule){
+      showWelcomeMessage(false, (char*)"GPS Test");
       logOut(2,(char*)"GPS serial started.");
       getGPSStartPosition(&startLat, &startLon); // get start position from GPS
 
@@ -957,6 +966,7 @@ void gotoDeepSleep(gpio_num_t button, uint64_t deepSleepTime)
   @param  int trianglePos : position of triangle indicating which parameter to change. 
   @param  0: anchor bearing; 1: anchor distance, 2: alarm coount; 3:alarm distance
   @return boolean : true if parameter change ongoing, false if exit parameter change mode
+
 *****************************************************************************/
 boolean handleParamChange(int trianglePos)
 {
@@ -970,6 +980,7 @@ boolean handleParamChange(int trianglePos)
             wData.anchorBearingDeg += 360;
           wData.anchorBearingDeg = ((int)wData.anchorBearingDeg) % 360; // wrap around
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed
+          wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
           sprintf(outstring,"handleParamChange: Anchor bearing changed to %3.0f degrees", wData.anchorBearingDeg);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -985,6 +996,7 @@ boolean handleParamChange(int trianglePos)
           if(wData.anchorDistanceM < 5)
             wData.anchorDistanceM = 5; // minimum 5 meters
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
+          wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
           sprintf(outstring,"handleParamChange: Anchor distance changed to %3.0f meters", wData.anchorDistanceM);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -1015,6 +1027,7 @@ boolean handleParamChange(int trianglePos)
           if(wData.alarmDistanceM < 1)
             wData.alarmDistanceM = 1; // minimum 1 meter
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
+          wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
           sprintf(outstring,"handleParamChange: Alarm distance changed to %3.0f meters", wData.alarmDistanceM);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -1083,23 +1096,6 @@ boolean handleParamChange(int trianglePos)
   } 
   return true;
 }
-
-/*****************************************************************************! 
-  @brief  doWork - Test main worker routine
-  @details 
-  @return void
-*****************************************************************************/
-
-void doTestWork()
-{
-  boolean buttonPressed = false; 
-  int64_t encoderPos = 0;
-
-  if(testRotaryEncoder)
-    testRotary(&buttonPressed, &encoderPos );
-  if(testGPSModule )
-    gpsTest();
-} // doTestWork
 
 /*****************************************************************************! 
   @brief  doWork - Routine main worker routine
@@ -1184,12 +1180,23 @@ void doRoutineWork()
   switch(wData.currentMode){
     case MODE_STARTED:    // 0 just switched on
       { 
+        sprintf(outstring,"Wait for GPS Fix");
+        showWelcomeMessage(false, outstring);
         do{
           sprintf(outstring,"doRoutineWork: MODE_STARTED, waiting for GPS fix... %d", cnt);
           logOut(2, outstring);
           gpsValid = gpsTest();
         } 
         while(!gpsValid && cnt++<120); // wait up to 120 seconds for gps fix
+        if(gpsValid){
+          sprintf(outstring,"Valid GPS Fix");
+          showWelcomeMessage(false, outstring);
+        }
+        else{
+          sprintf(outstring,"NO GPS Fix");
+          showWelcomeMessage(false, outstring);
+        }  
+        //smartDelay(1000);
         setScreenParameters();
         drawInputMainScreen();
         drawInputHeader();
@@ -1242,36 +1249,40 @@ void doRoutineWork()
           wData.currentMode = MODE_CHANGEPARAM; // go to change param mode
           menuStartTimer = millis();            // remember timer when gone to change parameter mode
         }
-        // safeguared against accicental keypress: if too long in menu, go to routine mode and do measurements
-        if(millis() - menuStartTimer > MAX_MILLIS_IN_MENU){
+        // safeguard against accidental keypress: if too long in menu, go to routine mode and do measurements
+        if((millis() - menuStartTimer) > MAX_MILLIS_IN_MENU){
           wData.currentMode = MODE_RUNNING; // go to measurement mode
           // get anchor position, project it and clear graph buffer if not yet available
-          if(wData.actLat > 0.01 && wData.actLon > 0.01){
+          //if(wData.actLat < 0.01 && wData.actLon < 0.01){
+          if(wData.anchorLat < 0.01 && wData.anchorLon < 0.01){  
             getGPSStartPosition(&wData.actLat, &wData.actLon); // get averaged boat start position from GPS
-            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Current GPS position Lat: %6.4f Lon: %6.4f", 
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting via timer. Current GPS position Lat: %6.4f Lon: %6.4f", 
                 wData.actLat, wData.actLon);  
             logOut(2, outstring);
             // project anchor distance and bearing from start position to get anchor position
             gps_offset(wData.actLat, wData.actLon, wData.anchorDistanceM, wData.anchorBearingDeg, &wData.anchorLat, &wData.anchorLon);
-            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor position set to Lat: %6.4f Lon: %6.4f", 
+            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting via timer. Anchor position set to Lat: %6.4f Lon: %6.4f", 
                 wData.anchorLat, wData.anchorLon);
             logOut(2, outstring);
             //initialize draw buffer
-            wData.drawCount = 0;
-            for (int i=0; i<maxDrawBufferLen; i++){
-              wData.drawBuffer[i][0] = 0;
-              wData.drawBuffer[i][1] = 0;
-            }
-            updatewData(); // populate wData structure for first run, then no update of gps data expected
+            if(wData.graphBufferClearingNeeded){
+              logOut(2,(char*)"clearing data buffer location 2");
+              wData.drawCount = 0;
+              wData.graphBufferClearingNeeded = false;
+              for (int i=0; i<maxDrawBufferLen; i++){
+                wData.drawBuffer[i][0] = 0;
+                wData.drawBuffer[i][1] = 0;
+                }
+              }
+              updatewData(); // populate wData structure for first run, then no update of gps data expected
           }
           else{
-            sprintf(outstring,"leaving menu via timer, re-use existing anchor position %6.6f %6.6f", 
-                wData.actLat, wData.actLon);
+           sprintf(outstring,"leaving menu via timer, re-use existing anchor position %6.6f %6.6f", 
+              wData.anchorLat, wData.anchorLon);
             logOut(2, outstring);    
           }
-
-        }  
-      }
+        }
+      }       
       break;
     case MODE_CHANGEPARAM:    // 2 input mode to set a specific parameter, defined by last triangePos
       {
@@ -1311,11 +1322,15 @@ void doRoutineWork()
                 wData.anchorLat, wData.anchorLon);
             logOut(2, outstring);
             //initialize draw buffer
-            wData.drawCount = 0;
-            for (int i=0; i<maxDrawBufferLen; i++){
-              wData.drawBuffer[i][0] = 0;
-              wData.drawBuffer[i][1] = 0;
-            }
+            if(wData.graphBufferClearingNeeded){
+              logOut(2,(char*)"clearing data buffer location 1");
+              wData.drawCount = 0;
+              wData.graphBufferClearingNeeded = false;
+              for (int i=0; i<maxDrawBufferLen; i++){
+                wData.drawBuffer[i][0] = 0;
+                wData.drawBuffer[i][1] = 0;
+              }
+            }  
             updatewData(); // populate wData structure for first run, then no update of gps data expected
             wData.currentMode = MODE_RUNNING; // go to change param mode
           }

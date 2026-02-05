@@ -73,6 +73,8 @@ struct measurementData
   bool alertON;          // remembers if an alert has been triggered
   bool validGPSLocation; // true if valid gps location, otherwise false
   mainLoopMode currentMode; // current main loop mode
+  bool preferencesChanged;     // flag to indicate that a preference has been changed
+  bool graphBufferClearingNeeded; // flag to indicate that graphics buffer must be cleared
 
   int32_t targetMeasurementIntervalSec;       // sleep time target in seconds, controls the measurement
   int32_t lastTargetSleeptime;                // last target standard sleep time in seconds
@@ -101,8 +103,6 @@ struct measurementData
 
   float batteryVoltage;        // Voltage of battery
   float batteryPercent;        // Percentage of charge remaining in battery, calculated
-
-  bool preferencesChanged;     // flag to indicate that a preference has been changed
 };
 extern RTC_DATA_ATTR measurementData wData;
 
@@ -121,6 +121,7 @@ void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
 void drawWatchScreen();
 void setScreenParameters();
 void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
+void showWelcomeMessage(boolean clearScreen, char* nextMessage);
 
 boolean gpsTest();
 

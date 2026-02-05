@@ -343,6 +343,62 @@ void testDisplayWeAct(){
   @details 
   @return void
 *****************************************************************************/
+void showWelcomeMessage(boolean clearScreen, char* nextMessage)
+{
+  int x, y;
+  // box parameters for partial screen update
+  int box_x; 
+  int box_y;
+  uint16_t box_w;
+  uint16_t box_h;
+  static int line = 1;
+  char displstring[200];       
+  
+  if(clearScreen){
+    display.setFont(&FreeMonoBold9pt7b);// set font
+    // display.setFont(NULL); // set default 5x7 font
+    display.setTextColor(GxEPD_BLACK);  // set text color
+    display.setRotation(SCREEN_ROTATION);//and screen rotation
+
+    display.setFullWindow();
+    display.firstPage();
+    do{
+      if(clearScreen){ // clear screen and reset line counter
+        display.fillScreen(GxEPD_WHITE);
+        line = 1;
+      }
+    
+      x=0; y= line*HEADER_FONT_SIZE-1;
+      display.setCursor(x, y);
+      display.print(nextMessage);  
+    } while (display.nextPage());
+  }
+  else{ // not clearScreen
+    box_x=0; 
+    box_w=SCREEN_WIDTH-1;
+    box_y=(line-1)*HEADER_FONT_SIZE; 
+    box_h=2*HEADER_FONT_SIZE;
+    display.setPartialWindow(box_x, box_y, box_w, box_h);
+    display.firstPage();
+    do{
+      display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE); 
+      x=0; y= (line)*HEADER_FONT_SIZE-1;
+      display.setCursor(x, y);
+      display.setCursor(x, y);
+      display.print(nextMessage);                 
+    } while (display.nextPage());     
+  }  
+  sprintf(displstring,"showWelcomeMessage line: %d x: %d y: %d box_x: %d box_y :%d box_w: %d box_h: %d Msg: _%s_\n", 
+                                                line,  x,    y,        box_x,    box_y,    box_w,    box_h,   nextMessage);
+  logOut(2, displstring);   
+  line++;
+}
+
+/*****************************************************************************! 
+  @brief  inputFirstScreen - initial screen display for input
+  @details 
+  @return void
+*****************************************************************************/
 void inputFirstScreen()
 {
   int x, y;

@@ -19,6 +19,39 @@ Main components:
 - PCB board: I have recycled a board for the ePaper barograph that I built earlier. I had a few ones left over, all the required pins are exposed (some not properly labeled...)
 - 3D printed housing
 
+## Using the Anchor Alarm
+Switch on with the toggle switch on the side.
+The device will go through a few selftests (including some beeps) 
+Then the main menu is shown. Rotate the knob to move through the menu or change values, press it to select.
+
+1: Program name and version
+2: Present GPS position in decimal notation
+3: Battery voltage and percentage
+5: Anchor Bearing - True compass bearing from boat to anchor
+6: Anchor Distance - Distance from boat to anchor om meters
+7: Alert Threshold - Numeric value that determines how often and how far the boat must be out of the safe circle before an alert is triggered. 10% out of the circle adds 1, 30% out of the circle adds 3 and so on. If the sum of these values is bigger than the Alert Threshold, the alert is triggered.
+8: Alert Distance - Radius of the safe circle around the anchor in meters. 
+9: Sleeptime - Time in seconds that the device sleeps between measurements (unless there is an alert, then it does not go to sleep)
+10: Detail Info - Determines how much data is shown in the watch (routine) screen
+11: Graph Weight - Determines how thick the lines and symbols are drawn in the watch screen
+12: Exit: Exit the menu, change to measurement screen and starts the watch
+
+The watch screen shows the anchor at the center (cross), the safe circle around it and the boat as a "target" in relation to the anchor. Depending on the detail info selected, further information is shown:
+- Anchor positon (top) and boat position (bottom)
+- Number of satellites and HDOP of GPS
+- Accumulated alert value (if bigger then Alert Threshold: Alert is triggered)
+- Measurement Counter, how often did the device wake up and checked the position
+- Battery voltage and percentage
+- Distance from and bearing from initial anchor position to boat. (If the boat is SW of the anchor position, the bearing is 235°)
+
+## Alert condition 
+An alert is triggered if any of the following conditions is true:
+- The present boat positon if too far from the original anchor position. Mathematical: (alert value) > (alert threshold). The alert value is accumulated over multiple runs: 10% out of the circle adds 1, 30% out of the circle adds 3 and so on. If the alert threshold is 10, an alert is triggered if the boat is out of the safe circle by more than 100% of the circle radius, or three times in sequence more than 33.3%, or ten times in sequence more than 10%. Whenever the boat returns into the safe circle, alert value is reset to 0.
+- No valid GPS position for more than 10 seconds. This is reset as soon as a valid GPS position has been found again
+- Battery voltage drops below 3.6V or battery percentage drops below 10%. Even with low voltage the device continues to work, until the battery protection kicks in
+
+An alert can be silenced by pressing the button of the rotary encoder, the device then goes to the menu screen. 
+
 ## Schematic
 Presently the schematic is available as Fritzing file. 
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">

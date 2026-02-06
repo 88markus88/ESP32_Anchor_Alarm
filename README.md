@@ -19,7 +19,8 @@ Main components:
 - PCB board: I have recycled a board for the ePaper barograph that I built earlier. I had a few ones left over, all the required pins are exposed (some not properly labeled...)
 - 3D printed housing
 
-##Schematic
+## Schematic
+Presently the schematic is available as Fritzing file. 
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
 
 Electrical Connections:
@@ -51,6 +52,13 @@ RX -  GPIO15 (SDA)
 TX - GPIO19 (SCL)
 GND-GND
 3.3 - 3.3 V
+
+## PCB - Printed Circuit Board
+For my first trials I have re-used a board that I previously used for another project. It does not fit exactly, but all required GPIOs are exposed.
+ePaper: is connected as intended
+Buzzer: is connected as intended via a S8050 transistor. The base is connected via a 2K resistor to GPIO2
+NEO-6M GPS module: the connection initially intended for I2C is used (3.3V, GND, GPIO 15 (labeled SDA) and GPIO19 (labeled SCL)
+KY-040 rotary encoder: is connected to 3.3V and GND via a OneWire connector, and to GPIOs 22,26 and 27 via the unmarked spare connectors on the left side of the Lolin Lite board
 
 ## Housing
 Housing is 3D printed using PLA filament. The STL files for the print are included in the directory "STL"

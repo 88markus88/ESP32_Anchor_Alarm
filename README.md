@@ -5,11 +5,9 @@ At anchor we like to use an anchor alarm app on the mobile. Unfortunately that o
 
 Thatˋs why I have come up with an alternative, an GPS based anchor alarm with LiPo battery and an ePaper display. It is run by power saving variant of the ESP32 SOC, the Lolin Lite.
 
-![Housing1](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_162428316.jpg | width=100)
-![Housing2](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_162439578.MP.jpg | width=150)
-![Display](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_164919321.jpg| width=200)
-
-<img src="[https://github.com/favicon.ico](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_164919321.jpg)" width="200">
+<img src="./pictures/PXL_20260204_162428316.jpg" width="300">
+<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="300">
+<img src="./pictures/PXL_20260204_164919321.jpg" width="300">
 
 Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.
@@ -19,5 +17,40 @@ Main components:
 - Optional: active GPS antenna
 - Rotary Encoder with button for settings
 - PCB board: I have recycled a board for the ePaper barograph that I built earlier. I had a few ones left over, all the required pins are exposed (some not properly labeled...)
-- 3D printed housing 
+- 3D printed housing
 
+##Schematic
+<img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
+
+Electrical Connections:
+KY-040:
+VCC - 3.3V
+GND - GND
+SW - GPIO26
+DT - GPIO 27
+CLK - GPIO 22
+
+Voltage measurement:
+GPIO 39
+
+Epaper WeAct 4.2":
+BUSY - GPIO 04 [15]
+RST - GPIO 16 [RES, 2]
+DC - GPIO 17 [D/C]
+CS - GPIO 05 [SS, 4]
+CLK - GPIO 18 [SCK, SCL, 18]
+DIN - GPIO 23 [MOSI, SDA, Data/ 23]
+GND - GND
+VCC - 3.3V
+
+Buzzer:
+Base - K Ohm - GPIO2
+
+NEO-6M GPS
+RX -  GPIO15 (SDA)
+TX - GPIO19 (SCL)
+GND-GND
+3.3 - 3.3 V
+
+## Housing
+Housing is 3D printed using PLA filament. The STL files for the print are included in the directory "STL"

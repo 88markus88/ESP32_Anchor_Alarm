@@ -606,7 +606,7 @@ void readPreferences()
     //int bytes=preferences.getBytes("prefs", prefs, sizeof(prefs));
     //----- verbosity
     if(preferences.isKey("verbosity"))
-      wData.verbosity = (verbosityType)preferences.getULong("applyPCorr", d_verbosity);
+      wData.verbosity = (verbosityType)preferences.getULong("verbosity", d_verbosity);
     else {  // set default    
       wData.verbosity = d_verbosity;
       preferences.putULong("verbosity", wData.verbosity);
@@ -656,6 +656,14 @@ void readPreferences()
       preferences.putFloat("anchorDistanceM", wData.anchorDistanceM);
     }
 
+    //----- noGpsAlertThreshold: alert threshold to alert if no gps signal detected
+    if(preferences.isKey("noGpsAlThrsh"))   // noGpsAlertThreshold
+      wData.noGpsAlertThreshold = preferences.getULong("noGpsAlThrsh", d_noGpsAlertThreshold);
+    else {  // set default    
+      wData.noGpsAlertThreshold = d_noGpsAlertThreshold;
+      preferences.putULong("noGpsAlThrsh", wData.noGpsAlertThreshold); 
+    }
+
     //int bytes2= preferences.getBytes("teststring2", teststring2, 80); // test
     //preferences.remove("teststring1"); // remove single key
     //preferences.clear();  // clear the namespace completely
@@ -664,8 +672,8 @@ void readPreferences()
     sprintf(outstring,"Read Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
             wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
     logOut(2,outstring); 
-    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f ",
-            wData.anchorBearingDeg, wData.anchorDistanceM);
+    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld",
+            wData.anchorBearingDeg, wData.anchorDistanceM, wData.noGpsAlertThreshold);
     logOut(2,outstring);         
 }    
 
@@ -699,6 +707,9 @@ void writePreferences()
     ret4 = preferences.putFloat("anchorBearingDeg", wData.anchorBearingDeg);
     ret5 = preferences.putFloat("anchorDistanceM", wData.anchorDistanceM);
 
+    //---- alert threshold for "no GPS" count
+    ret6 =   preferences.putULong("noGpsAlThrsh", wData.noGpsAlertThreshold);
+
     //int bytes2= preferences.getBytes("teststring2", teststring2, 80); // test
     //preferences.remove("teststring1"); // remove single key
     //preferences.clear();  // clear the namespace completely
@@ -707,11 +718,11 @@ void writePreferences()
     sprintf(outstring,"Wrote Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
             wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
     logOut(2,outstring); 
-    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f ",
-            wData.anchorBearingDeg, wData.anchorDistanceM);
+    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld",
+            wData.anchorBearingDeg, wData.anchorDistanceM, wData.noGpsAlertThreshold);
     logOut(2,outstring);       
-    sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d %d %d \n", 
-                ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5);
+    sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d %d %d %d\n", 
+                ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5, ret6);
     logOut(2,outstring); 
 }
 
@@ -822,7 +833,6 @@ void setup()
          delay(1000); // needed for parallel buzzer
       } 
     }  
-
 
     boolean buttonPressed = false; 
     int64_t encoderPos = 0;
@@ -1127,6 +1137,25 @@ void clearGraphBuffer(int callerID)
     }
 }
 
+// helper function to check for gps reception coming back vor x seconds
+boolean gpsReEstablished(int32_t secs)
+{
+  int i;
+  for(i=0;i<secs; i++){
+    smartDelay(1000); // wait a second, polling for gps data
+    if (gps.location.isValid()){
+      wData.noGpsCount = 0;
+      sprintf(outstring,"GPS location re-estabilshed in %d of %ld", i, secs);
+      logOut(2, outstring);
+      return(true);
+    }
+    wData.noGpsCount++;
+  }
+  sprintf(outstring,"!!!!! GPS location remains lost for %ld secs - Alarm", i, secs);
+  logOut(2, outstring);
+  return(false);
+}
+
 // helper function to populate the wData structure
 void updatewData() 
 {
@@ -1149,33 +1178,47 @@ void updatewData()
     wData.alertCount = 0.0;
 
   wData.alertON = false;  // start out with no alert
-  strcpy(wData.alertReasonString,"None");
+  strcpy(wData.alertReasonString,"");
   wData.alertReason = 0;
 
   if(wData.alertCount >= wData.alarmThreshold){       // alarm if alert counter above threshold
     wData.alertON = true;
     wData.alertReason += 1;
-    strcpy(wData.alertReasonString, "Anchor Distance");
+    strcat(wData.alertReasonString, "Anchor Distance.  ");
   }  
 
   if(wData.batteryVoltage < BAT_VOLTAGE_THRESHOLD){   // or alarm if battery voltage too low 
     wData.alertON = true;
     wData.alertReason += 2;
-    strcpy(wData.alertReasonString, "Battery Voltage Low");
+    strcat(wData.alertReasonString, "Bat Voltage Low.  ");
   }  
 
   if(wData.batteryPercent < BAT_PERCENT_THRESHOLD){ 
     wData.alertReason += 4;
     wData.alertON = true;
-    strcpy(wData.alertReasonString, "Battery Percent Low");
+    strcat(wData.alertReasonString,  "Bat Percent Low.  ");
   }
 
   if(!gps.location.isValid()){                        // or alarm if no GPS reception   
-    wData.validGPSLocation = false;  
-    wData.alertON = true;
-    wData.alertReason += 8;
-    strcpy(wData.alertReasonString, "Invalid GPS Location");
-  }    
+    boolean ret = gpsReEstablished(wData.noGpsAlertThreshold);
+    if(!ret){
+      wData.validGPSLocation = false;  
+      wData.alertON = true;
+      wData.alertReason += 8;
+      strcat(wData.alertReasonString,"Invalid GPS Loc.  ");
+    }
+    /*
+    wData.noGpsCount++;
+    if(wData.noGpsCount > wData.noGpsAlertThreshold){
+      wData.validGPSLocation = false;  
+      wData.alertON = true;
+      wData.alertReason += 8;
+      strcpy(wData.alertReasonString, "Invalid GPS Loc.  ");
+    }
+    */  
+  } 
+  else
+    wData.noGpsCount = 0;   
 }
 
 void doRoutineWork()

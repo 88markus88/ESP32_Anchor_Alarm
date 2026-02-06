@@ -45,6 +45,7 @@ enum graphWeightType{
 #define d_targetMeasurementIntervalSec 20
 #define d_verbosity       HI
 #define d_graphWeight     HEAVY
+#define d_noGpsAlertThreshold 10
 
 // Battery Thresholds for alert
 #define BAT_VOLTAGE_THRESHOLD 3.6
@@ -98,8 +99,10 @@ struct measurementData
   double actHDOP;              // GPS HDOP
   int32_t SatCnt;              // GPS visible satellites
   double alertCount;           // counter for alert condition
-  char alertReasonString[30];  // reason for alert
+  char alertReasonString[80];  // reason for alert
   int32_t alertReason;         // bitmask rason for alert 
+  int32_t noGpsCount;          // counter for "no gps signal" detected
+  int32_t noGpsAlertThreshold; // threshold for number of "no gps signal detected" which causes alert
 
   float batteryVoltage;        // Voltage of battery
   float batteryPercent;        // Percentage of charge remaining in battery, calculated

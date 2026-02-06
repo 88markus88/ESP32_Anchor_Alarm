@@ -679,6 +679,13 @@ void drawWatchScreen(){
     }
     display.print(outstring);
 
+    if(wData.alertON){
+      x=0; y= SCREEN_HEIGHT/2;
+      sprintf(outstring,"%s", wData.alertReasonString);
+      display.setCursor(x, y);
+      display.print(outstring);
+    }
+
     if(wData.verbosity == HI){
       x=0; y=2 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -687,10 +694,10 @@ void drawWatchScreen(){
 
       x=0; y=3 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
+      sprintf(outstring,"S:%d %3.2f",wData.SatCnt, wData.actHDOP);
       display.print(outstring);
       
-      sprintf(outstring,"%3.1f",wData.alertCount);
+      sprintf(outstring,"AC:%3.1f",wData.alertCount);
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -707,7 +714,7 @@ void drawWatchScreen(){
       display.setCursor(x, y);
       display.print(outstring);
 
-      sprintf(outstring,"%3.0f",wData.alarmDistanceM);
+      sprintf(outstring,"%2.0fm",wData.alarmDistanceM);
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=5 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -723,9 +730,20 @@ void drawWatchScreen(){
       sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
       display.print(outstring);
 
-      x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
+      //x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
+      //display.setCursor(x, y);
+      //sprintf(outstring,"%4.1fm       %3.1f*",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      //display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT - HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      sprintf(outstring,"%4.1fm",wData.actAnchorDistanceM);
+      display.print(outstring);      
+
+      sprintf(outstring,"%3.0f*",wData.actAnchorBearingDeg);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - HEADER_FONT_SIZE;
+      display.setCursor(x, y);
       display.print(outstring);
     } // verbosity HI
     
@@ -749,7 +767,7 @@ void drawWatchScreen(){
 
       x=0; y=3 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"Bat:%3.2fV",wData.batteryVoltage);
+      sprintf(outstring,"%3.2fV",wData.batteryVoltage);
       display.print(outstring);
 
       sprintf(outstring,"%3.0f%%",wData.batteryPercent);
@@ -758,7 +776,7 @@ void drawWatchScreen(){
       display.setCursor(x, y);
       display.print(outstring);
 
-      sprintf(outstring,"R:%2.0f",wData.alarmDistanceM);
+      sprintf(outstring,"%2.0f",wData.alarmDistanceM);
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -776,8 +794,14 @@ void drawWatchScreen(){
       */
       x=0; y=SCREEN_HEIGHT - 1;
       display.setCursor(x, y);
-      sprintf(outstring,"%4.1fm        %3.0f*",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
+      sprintf(outstring,"%4.1fm",wData.actAnchorDistanceM);
       display.print(outstring);      
+
+      sprintf(outstring,"%3.0f*",wData.actAnchorBearingDeg);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      display.print(outstring);
     } // verbosity MED
 
     if(wData.verbosity == LO){
@@ -792,15 +816,6 @@ void drawWatchScreen(){
       sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
       display.print(outstring);
       */
-      x=0; y=3 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"AlertCnt:",wData.SatCnt, wData.actHDOP);
-      display.print(outstring);
-      sprintf(outstring,"%3.1f",wData.alertCount);
-      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
-      x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      display.print(outstring);
 
       x=0; y=2 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -813,9 +828,26 @@ void drawWatchScreen(){
       display.setCursor(x, y);
       display.print(outstring);
 
-      sprintf(outstring,"R:%3.0f",wData.alarmDistanceM);
+      sprintf(outstring,"AC:%3.1f",wData.alertCount);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=3 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      sprintf(outstring,"%2.0fm",wData.alarmDistanceM);
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=4 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"Sat:%ld",wData.SatCnt);
+      display.print(outstring);
+
+      sprintf(outstring,"HDOP:%3.2f",wData.actHDOP);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 1;
       display.setCursor(x, y);
       display.print(outstring);
 

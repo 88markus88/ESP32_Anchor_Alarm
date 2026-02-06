@@ -797,21 +797,6 @@ void setup()
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
-  // no longer necessary here, handled in readPreferences()
-  /*
-  if(wData.currentMode == MODE_STARTED){ //populate missing data from defaults
-    logOut(2,(char*)"===== populating defaults");
-    wData.anchorBearingDeg= d_anchorBearingDeg;
-    wData.anchorDistanceM = d_anchorDistanceM; 
-    wData.alarmThreshold  = d_alarmThreshold; 
-    wData.alarmDistanceM  = d_alarmDistanceM;  
-    wData.drawCount       = 0;
-    wData.startCounter    = 0;
-    wData.targetMeasurementIntervalSec = d_targetMeasurementIntervalSec;
-    wData.verbosity       = d_verbosity;
-    wData.graphWeight     = d_graphWeight;  }
-  */ 
-
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // short display test
     if(testDisplayModule)
@@ -1054,11 +1039,23 @@ boolean handleParamChange(int trianglePos)
       {
         int64_t encoderPos = -encoder.getCount();
         if(encoderPos != 0){
-          wData.verbosity = (enum verbosityType)(wData.verbosity + (verbosityType)encoderPos); // each step is 1
+          // Drehwert-basierte Abfrage -  nich so gut für ENUM-Werte, springt meist einen zu weit
+          //wData.verbosity = (enum verbosityType)(wData.verbosity + (verbosityType)encoderPos); // each step is 1
+          //if(wData.verbosity > HI) 
+          //  wData.verbosity = LO; // handle runover, valid are 0..2
+          //if(wData.verbosity < LO) 
+          //  wData.verbosity = HI; // handle runover, valid are 0..2  
+
+          // einfach nur auf +/- dämpft das besser
+          if(encoderPos > 0)
+            wData.verbosity = (enum verbosityType)(wData.verbosity + 1); 
+          else if(encoderPos < 0)
+            wData.verbosity = (enum verbosityType)(wData.verbosity - 1); 
           if(wData.verbosity > HI) 
             wData.verbosity = LO; // handle runover, valid are 0..2
           if(wData.verbosity < LO) 
-            wData.verbosity = HI; // handle runover, valid are 0..2  
+            wData.verbosity = HI; // handle runover, valid are 0..2        
+
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: verbosity to %ld [s]", wData.verbosity);
           logOut(2, outstring);
@@ -1071,11 +1068,24 @@ boolean handleParamChange(int trianglePos)
       {
         int64_t encoderPos = -encoder.getCount();
         if(encoderPos != 0){
-          wData.graphWeight = (enum graphWeightType)(wData.graphWeight + (graphWeightType)encoderPos); // each step is 1 
+          // Drehwert-basierte Abfrage -  nich so gut für ENUM-Werte, springt meist einen zu weit
+          //wData.graphWeight = (enum graphWeightType)(wData.graphWeight + (graphWeightType)encoderPos); // each step is 1 
+          //if(wData.graphWeight > HEAVY) 
+          //  wData.graphWeight = MINIM; // handle runover, valid are 0..2
+          //if(wData.graphWeight < MINIM) 
+          //  wData.graphWeight = HEAVY; // handle runover, valid are 0..2  
+
+          // einfach nur auf +/- dämpft das besser
+          if(encoderPos > 0)
+            wData.graphWeight = (enum graphWeightType)(wData.graphWeight + 1); 
+          else if(encoderPos < 0)
+            wData.graphWeight = (enum graphWeightType)(wData.graphWeight - 1); 
           if(wData.graphWeight > HEAVY) 
             wData.graphWeight = MINIM; // handle runover, valid are 0..2
           if(wData.graphWeight < MINIM) 
-            wData.graphWeight = HEAVY; // handle runover, valid are 0..2  
+            wData.graphWeight = HEAVY; // handle runover, valid are 0..2                
+
+
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: graphWeight to %ld [s]", wData.graphWeight);
           logOut(2, outstring);
@@ -1103,7 +1113,22 @@ boolean handleParamChange(int trianglePos)
   @return void
 *****************************************************************************/
 
-void updatewData() // helper function to populate the wData structure
+// helper function to clear drawing buffer for historic positions
+// which remain only valid as long as anchor position, alarm radius etc are not changed
+void clearGraphBuffer(int callerID)
+{
+  sprintf(outstring,"clearing data buffer. Caller: %d", callerID);
+  logOut(2,outstring);
+  wData.drawCount = 0;
+  wData.graphBufferClearingNeeded = false;
+  for (int i=0; i<maxDrawBufferLen; i++){
+    wData.drawBuffer[i][0] = 0;
+    wData.drawBuffer[i][1] = 0;
+    }
+}
+
+// helper function to populate the wData structure
+void updatewData() 
 {
   wData.actLat = gps.location.lat();
   wData.actLon = gps.location.lng();
@@ -1180,6 +1205,11 @@ void doRoutineWork()
   switch(wData.currentMode){
     case MODE_STARTED:    // 0 just switched on
       { 
+        // includes clear screen & setting of font/rotation. 
+        // Otherwise following messages will show small and rotated within previous screen
+        sprintf(outstring,"AnchorAlarm %s", VERSION);
+        showWelcomeMessage(true, outstring);
+        
         sprintf(outstring,"Wait for GPS Fix");
         showWelcomeMessage(false, outstring);
         do{
@@ -1265,16 +1295,9 @@ void doRoutineWork()
                 wData.anchorLat, wData.anchorLon);
             logOut(2, outstring);
             //initialize draw buffer
-            if(wData.graphBufferClearingNeeded){
-              logOut(2,(char*)"clearing data buffer location 2");
-              wData.drawCount = 0;
-              wData.graphBufferClearingNeeded = false;
-              for (int i=0; i<maxDrawBufferLen; i++){
-                wData.drawBuffer[i][0] = 0;
-                wData.drawBuffer[i][1] = 0;
-                }
-              }
-              updatewData(); // populate wData structure for first run, then no update of gps data expected
+            if(wData.graphBufferClearingNeeded)
+              clearGraphBuffer(2);
+            updatewData(); // populate wData structure for first run, then no update of gps data expected
           }
           else{
            sprintf(outstring,"leaving menu via timer, re-use existing anchor position %6.6f %6.6f", 
@@ -1322,15 +1345,8 @@ void doRoutineWork()
                 wData.anchorLat, wData.anchorLon);
             logOut(2, outstring);
             //initialize draw buffer
-            if(wData.graphBufferClearingNeeded){
-              logOut(2,(char*)"clearing data buffer location 1");
-              wData.drawCount = 0;
-              wData.graphBufferClearingNeeded = false;
-              for (int i=0; i<maxDrawBufferLen; i++){
-                wData.drawBuffer[i][0] = 0;
-                wData.drawBuffer[i][1] = 0;
-              }
-            }  
+            if(wData.graphBufferClearingNeeded)
+              clearGraphBuffer(1);
             updatewData(); // populate wData structure for first run, then no update of gps data expected
             wData.currentMode = MODE_RUNNING; // go to change param mode
           }

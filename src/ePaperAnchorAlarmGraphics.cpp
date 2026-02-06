@@ -359,16 +359,14 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
     // display.setFont(NULL); // set default 5x7 font
     display.setTextColor(GxEPD_BLACK);  // set text color
     display.setRotation(SCREEN_ROTATION);//and screen rotation
-
     display.setFullWindow();
+    
+    line = 1;    
+    x=0; y= line*HEADER_FONT_SIZE-1;
     display.firstPage();
     do{
-      if(clearScreen){ // clear screen and reset line counter
-        display.fillScreen(GxEPD_WHITE);
-        line = 1;
-      }
-    
-      x=0; y= line*HEADER_FONT_SIZE-1;
+      display.fillScreen(GxEPD_WHITE);
+
       display.setCursor(x, y);
       display.print(nextMessage);  
     } while (display.nextPage());

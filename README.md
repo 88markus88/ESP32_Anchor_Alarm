@@ -56,35 +56,35 @@ An alert can be silenced by pressing the button of the rotary encoder, the devic
 Presently the schematic is available as Fritzing file. 
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
 
-Electrical Connections:
-KY-040:
-VCC - 3.3V
-GND - GND
-SW - GPIO26
-DT - GPIO 27
-CLK - GPIO 22
+## Electrical Connections:
+KY-040:<br>
+VCC - 3.3V<br>
+GND - GND<br>
+SW - GPIO26<br>
+DT - GPIO 27<br>
+CLK - GPIO 22<br>
 
-Voltage measurement:
-GPIO 39
+Voltage measurement:<br>
+GPIO 39<br>
 
-Epaper WeAct 4.2":
-BUSY - GPIO 04 [15]
-RST - GPIO 16 [RES, 2]
-DC - GPIO 17 [D/C]
-CS - GPIO 05 [SS, 4]
-CLK - GPIO 18 [SCK, SCL, 18]
-DIN - GPIO 23 [MOSI, SDA, Data/ 23]
-GND - GND
-VCC - 3.3V
+Epaper:<br>
+BUSY - GPIO 04 [15]<br>
+RST - GPIO 16 [RES, 2]<br>
+DC - GPIO 17 [D/C]<br>
+CS - GPIO 05 [SS, 4]<br>
+CLK - GPIO 18 [SCK, SCL, 18]<br>
+DIN - GPIO 23 [MOSI, SDA, Data/ 23]<br>
+GND - GND<br>
+VCC - 3.3V<br>
 
-Buzzer:
-Base - K Ohm - GPIO2
+Buzzer:<br>
+Base - K Ohm - GPIO2<br>
 
-NEO-6M GPS
-RX -  GPIO15 (SDA)
-TX - GPIO19 (SCL)
-GND-GND
-3.3 - 3.3 V
+NEO-6M GPS<br>
+RX -  GPIO15 (SDA)<br>
+TX - GPIO19 (SCL)<br>
+GND-GND<br>
+3.3 - 3.3 V<br>
 
 ## PCB - Printed Circuit Board
 For my first trials I have re-used a board that I previously used for another project. It does not fit exactly, but all required GPIOs are exposed.

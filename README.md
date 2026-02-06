@@ -37,7 +37,7 @@ Then the main menu is shown. Rotate the knob to move through the menu or change 
 12: Exit: Exit the menu, change to measurement screen and starts the watch
 
 The watch screen shows the anchor at the center (cross), the safe circle around it and the boat as a "target" in relation to the anchor. Depending on the detail info selected, further information is shown:
-- Anchor positon (top) and boat position (bottom)
+- Anchor positon (top) and boat position (bottom). Previous position are shown as dots, size depending on the setting "Graph Weight".
 - Number of satellites and HDOP of GPS
 - Accumulated alert value (if bigger then Alert Threshold: Alert is triggered)
 - Measurement Counter, how often did the device wake up and checked the position

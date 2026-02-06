@@ -24,17 +24,17 @@ Switch on with the toggle switch on the side.
 The device will go through a few selftests (including some beeps) 
 Then the main menu is shown. Rotate the knob to move through the menu or change values, press it to select.
 
-1: Program name and version
-2: Present GPS position in decimal notation
-3: Battery voltage and percentage
-5: Anchor Bearing - True compass bearing from boat to anchor
-6: Anchor Distance - Distance from boat to anchor om meters
-7: Alert Threshold - Numeric value that determines how often and how far the boat must be out of the safe circle before an alert is triggered. 10% out of the circle adds 1, 30% out of the circle adds 3 and so on. If the sum of these values is bigger than the Alert Threshold, the alert is triggered.
-8: Alert Distance - Radius of the safe circle around the anchor in meters. 
-9: Sleeptime - Time in seconds that the device sleeps between measurements (unless there is an alert, then it does not go to sleep)
-10: Detail Info - Determines how much data is shown in the watch (routine) screen
-11: Graph Weight - Determines how thick the lines and symbols are drawn in the watch screen
-12: Exit: Exit the menu, change to measurement screen and starts the watch
+1: Program name and version<br>
+2: Present GPS position in decimal notation<br>
+3: Battery voltage and percentage<br>
+5: Anchor Bearing - True compass bearing from boat to anchor<br>
+6: Anchor Distance - Distance from boat to anchor om meters<br>
+7: Alert Threshold - Numeric value that determines how often and how far the boat must be out of the safe circle before an alert is triggered. 10% out of the circle adds 1, 30% out of the circle adds 3 and so on. If the sum of these values is bigger than the Alert Threshold, the alert is triggered<br>
+8: Alert Distance - Radius of the safe circle around the anchor in meters <br>
+9: Sleeptime - Time in seconds that the device sleeps between measurements (unless there is an alert, then it does not go to sleep)<br>
+10: Detail Info - Determines how much data is shown in the watch (routine) screen<br>
+11: Graph Weight - Determines how thick the lines and symbols are drawn in the watch screen<br>
+12: Exit: Exit the menu, change to measurement screen and starts the watch<br>
 
 The watch screen shows the anchor at the center (cross), the safe circle around it and the boat as a "target" in relation to the anchor. Depending on the detail info selected, further information is shown:
 - Anchor positon (top) and boat position (bottom). Previous position are shown as dots, size depending on the setting "Graph Weight".

@@ -17,5 +17,40 @@ Main components:
 - Optional: active GPS antenna
 - Rotary Encoder with button for settings
 - PCB board: I have recycled a board for the ePaper barograph that I built earlier. I had a few ones left over, all the required pins are exposed (some not properly labeled...)
-- 3D printed housing 
+- 3D printed housing
 
+##Schematic
+<img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
+
+Electrical Connections:
+KY-040:
+VCC - 3.3V
+GND - GND
+SW - GPIO26
+DT - GPIO 27
+CLK - GPIO 22
+
+Voltage measurement:
+GPIO 39
+
+Epaper WeAct 4.2":
+BUSY - GPIO 04 [15]
+RST - GPIO 16 [RES, 2]
+DC - GPIO 17 [D/C]
+CS - GPIO 05 [SS, 4]
+CLK - GPIO 18 [SCK, SCL, 18]
+DIN - GPIO 23 [MOSI, SDA, Data/ 23]
+GND - GND
+VCC - 3.3V
+
+Buzzer:
+Base - K Ohm - GPIO2
+
+NEO-6M GPS
+RX -  GPIO15 (SDA)
+TX - GPIO19 (SCL)
+GND-GND
+3.3 - 3.3 V
+
+## Housing
+Housing is 3D printed using PLA filament. The STL files for the print are included in the directory "STL"

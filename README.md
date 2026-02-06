@@ -97,4 +97,14 @@ KY-040 rotary encoder: is connected to 3.3V and GND via a OneWire connector, and
 Housing is 3D printed using PLA filament. The STL files for the print are included in the directory "STL"
 
 ## Disclaimer
-The information about this device, as well as software code, hardware description and all other material in this repository, are made available in the hope to be useful. This ist NOT a professional device, but a hobbyist project. There are no warranties or guarantees of any kind for it's proper operation.
+This project is a personal hobbyist project and is provided for educational and experimental purposes only.
+
+All hardware designs, software, firmware, and documentation are provided “as is” and “as available”, without any warranties, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
+
+The authors and contributors shall not be held liable for any direct or indirect damages, including but not limited to hardware damage, data loss, personal injury, fire, electrical hazards, or legal issues arising from the use, misuse, or inability to use this project.
+
+This project is not intended for use in safety-critical, medical, automotive, industrial, or commercial applications.
+
+You are solely responsible for verifying the correctness, safety, and suitability of this project for your use case, as well as ensuring compliance with all applicable laws, regulations, and standards.
+
+Use this project at your own risk.

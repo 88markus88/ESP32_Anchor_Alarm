@@ -5,11 +5,10 @@ At anchor we like to use an anchor alarm app on the mobile. Unfortunately that o
 
 Thatˋs why I have come up with an alternative, an GPS based anchor alarm with LiPo battery and an ePaper display. It is run by power saving variant of the ESP32 SOC, the Lolin Lite.
 
-![Housing1](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_162428316.jpg | width=100)
-![Housing2](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_162439578.MP.jpg | width=150)
-![Display](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_164919321.jpg| width=200)
-
-<img src="[https://github.com/favicon.ico](https://github.com/88markus88/ESP32_Anchor_Alarm/blob/main/pictures/PXL_20260204_164919321.jpg)" width="200">
+<img src="./pictures/PXL_20260204_162428316.jpg" width="300")
+<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="150")
+Display
+<img src="./pictures/PXL_20260204_164919321.jpg" width="200">
 
 Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.

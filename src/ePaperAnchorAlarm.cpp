@@ -462,7 +462,7 @@ void gpsHandler(){
   char ch;
   while (ss.available()){
     ch = ss.read();
-    //Serial.write(ch); // uncomment to see raw GPS data 
+    Serial.write(ch); // uncomment to see raw GPS data 
     gps.encode(ch);
   }   
 }
@@ -475,9 +475,32 @@ void gpsHandler(){
 ***************************************************/
 boolean gpsTest()
 {
+  boolean valid;
+  bool ret1, ret2, ret3;
+  double hdop = 0.0;
+
   smartDelay(1000); // wait for 1 second while feeding gps object
   displayGPSInfo();  // get and display GPS info
-  return gps.location.isValid();
+
+  hdop = gps.hdop.hdop();
+  ret1 = gps.location.isValid();
+  ret2 = gps.location.isUpdated();
+  ret3 = gps.hdop.isValid();
+  if (ret1 /*&& ret2 */ && ret3 && (hdop < 3.0)) // updated is infrequent, so not required for test, but if it is updated, it should be valid. HDOP should be less than 3 for good accuracy, but this is not always the case, so not required for test either.
+    valid = true;
+  else  
+    valid = false;
+
+  sprintf(outstring,"GPS test: location valid: %s, location updated: %s, HDOP valid: %s, HDOP value: %4.2f => GPS test result: %s",
+    gps.location.isValid() ? "YES" : "NO",
+    gps.location.isUpdated() ? "YES" : "NO",
+    gps.hdop.isValid() ? "YES" : "NO",
+    hdop,
+    valid ? "PASS" : "FAIL"); 
+  logOut(2, outstring);  
+
+  return valid;
+  //return gps.location.isValid();
 }
 
 /**************************************************!
@@ -755,6 +778,89 @@ void writeCounterPreferences()
 }
 */
 
+// stuff for optimization of gps receiver 
+// ---------- UBX: PSM setzen ----------
+void setPSM(uint32_t updateMs) {
+  uint32_t onTime = 3000;
+
+  sprintf(outstring,"Setting GPS PSM with updateMs: %ld onTime: %ld", updateMs, onTime);
+  logOut(2, outstring);
+  uint8_t msg[52] = {
+    0xB5,0x62, // 0 UBX message
+    0x06,0x3B, // 2 Class 0x06 (CFG), ID 0x3B (PM2)
+    0x2C,0x00, // 4 Length of payload: 0x002C (44) bytes 
+    0x01,0x00, // 6 version and reserved
+    0x00,0x00, // 8 reserved
+    0x08,0x00,0x00,0x00,  // 10 flags: bit 3 (update RTC on wakeup) and bit 0 (enable PSM) set, rest 
+    0,0,0,0,   // 14 updatePeriod
+    0,0,0,0,   // 18 searchPeriod 
+    0,0,0,0,   // 22 gridOffset
+    0,0,0,0,   // 26 onTime
+    0,0,0,0,   // 30 minAcqTime
+    0,0,0,0,   // 34
+    0,0,0,0,   // 38 
+    0,0,0,0,   // 42
+    0,0
+  };
+
+  // zusatz versuch 1: set flags
+  uint32_t flags = 0x00003008; // zusätzlich zu RTC + EPH
+  memcpy(&msg[10], &flags, 4);
+
+  // zusatz versuch 2: set  searchPeriod if updateMs > 10s
+  uint32_t searchPeriod = 30000;
+  if(updateMs > 10000)        // und bei langen pausen search persiod zusätzlich setzen
+    memcpy(&msg[18], &searchPeriod, 4);
+
+  memcpy(&msg[14], &updateMs, 4);
+  memcpy(&msg[26], &onTime, 4);
+  memcpy(&msg[30], &onTime, 4); // actually minAquTime
+
+  // calculate checksum
+  uint8_t ckA=0, ckB=0;
+  for (int i=2; i<50; i++) {
+    ckA += msg[i];
+    ckB += ckA;
+  }
+  msg[50] = ckA;
+  msg[51] = ckB;
+
+  ss.write(msg, sizeof(msg));
+}
+
+void disableNMEA(uint8_t msg, uint8_t rate) {
+  uint8_t l_ubx[16] = {
+    0xB5,0x62,  // UBX message
+    0x06,0x01,  // Class 0x06 (CFG), ID 0x01 (MSG)
+    0x02,0x00,  // Lengh of payload: 0x0002 bytes
+    0x08,0x00,  // payload
+    0xF0,msg,   
+    0x00,rate,
+    0x00,0x00,
+    0x00,0x00   // checksum a and b
+  };
+
+  uint8_t ckA=0, ckB=0;
+  for (int i=2;i<14;i++) { ckA+=l_ubx[i]; ckB+=ckA; }
+  l_ubx[14]=ckA; l_ubx[15]=ckB;
+  //gps.write(l_ubx,16);
+  ss.write(l_ubx,16);
+}
+
+// switch off all NMEA messages except GGA and RMC, to optimize GPS performance
+void optimizeNMEA()
+{
+  // nur diese behalten:
+  disableNMEA(0x00, 1); // GGA
+  disableNMEA(0x04, 1); // RMC
+
+  // alles andere aus:
+  disableNMEA(0x01, 0); // GLL
+  disableNMEA(0x02, 0); // GSA
+  disableNMEA(0x03, 0); // GSV
+  disableNMEA(0x05, 0); // VTG
+}
+
 /*****************************************************************************! 
   @brief  setup routine
   @details 
@@ -808,7 +914,13 @@ void setup()
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
+  // GPS aggressive for quick position Fix
+  setPSM(1000); // 1s Update, 
+
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
+    // remove unnecessary NMEA messages to optimize GPS performance
+    optimizeNMEA();
+    
     // short display test
     if(testDisplayModule)
       testDisplay();  
@@ -1137,15 +1249,19 @@ void clearGraphBuffer(int callerID)
     }
 }
 
-// helper function to check for gps reception coming back vor x seconds
+// helper function to check for gps reception coming back for x seconds
 boolean gpsReEstablished(int32_t secs)
 {
   int i;
   for(i=0;i<secs; i++){
     smartDelay(1000); // wait a second, polling for gps data
-    if (gps.location.isValid()){
+    //if (gps.location.isValid()){
+    if (gps.location.isValid() &&
+        gps.location.isUpdated() &&
+        gps.hdop.isValid() &&
+        gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
       wData.noGpsCount = 0;
-      sprintf(outstring,"GPS location re-estabilshed in %d of %ld", i, secs);
+      sprintf(outstring,"Good GPS location re-estabilshed in %d of %ld", i, secs);
       logOut(2, outstring);
       return(true);
     }
@@ -1261,6 +1377,7 @@ void doRoutineWork()
           gpsValid = gpsTest();
         } 
         while(!gpsValid && cnt++<120); // wait up to 120 seconds for gps fix
+
         if(gpsValid){
           sprintf(outstring,"Valid GPS Fix");
           showWelcomeMessage(false, outstring);
@@ -1433,6 +1550,9 @@ void doRoutineWork()
             smartDelay(1000);
           }  
           else{
+            // before sleep: reduce gps update rate to save power, and set GPS to aggressive mode for quick position fix after wakeup
+            setPSM(30000); // 30s Update,for power saving   
+            delay(50); // wait a bit for gps to adapt to new settings
             // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
             targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;
             gotoDeepSleep(BUTTON1, targetSleepUSec); // go to deep sleep. parameters: sleeptime in us, button to wakeup from  

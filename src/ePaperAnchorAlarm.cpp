@@ -798,6 +798,7 @@ void addChecksum(uint8_t* msg, uint8_t len) {
 }
 
 // set update rate to 1 Hz, to reduce power consumption, as we do not need more frequent updates for our application.
+/*
 size_t setRate1Hz() {
   uint8_t msg[] = {
     0xB5,0x62,
@@ -812,8 +813,10 @@ size_t setRate1Hz() {
   size_t written = sendUBX(msg, sizeof(msg));
   return written;
 }
+*/
 
 // ---------- UBX: PSM setzen ----------
+/*
 void setPSM(uint32_t updateMs) {
   uint32_t onTime = 3000;
 
@@ -848,25 +851,26 @@ void setPSM(uint32_t updateMs) {
   memcpy(&msg[26], &onTime, 4);
   memcpy(&msg[30], &onTime, 4); // actually minAquTime
 
-  /*
-  // calculate checksum
-  uint8_t ckA=0, ckB=0;
-  for (int i=2; i<50; i++) {
-    ckA += msg[i];
-    ckB += ckA;
-  }
-  msg[50] = ckA;
-  msg[51] = ckB;
 
-  ss.write(msg, sizeof(msg));
-  ss.flush();
-  delay(100); // give GPS some time to process the message
-  */ 
+  //--- calculate checksum
+  //uint8_t ckA=0, ckB=0;
+  //for (int i=2; i<50; i++) {
+  //  ckA += msg[i];
+  //  ckB += ckA;
+  //}
+  //msg[50] = ckA;
+  //msg[51] = ckB;
+  //
+  //ss.write(msg, sizeof(msg));
+  //ss.flush();
+  //delay(100); // give GPS some time to process the message
+
   addChecksum(msg, sizeof(msg));
   size_t written = sendUBX(msg, sizeof(msg));
   sprintf(outstring,"setPSM: updateMs: %ld onTime: %ld bytes written: %d", updateMs, onTime, written);
   logOut(2, outstring);
 }
+*/
 
 size_t disableNMEA(uint8_t msg, uint8_t rate) {
 
@@ -898,22 +902,72 @@ size_t disableNMEA(uint8_t msg, uint8_t rate) {
   return written;
 }
 
-// switch off all NMEA messages except GGA and RMC, to optimize GPS performance
+// switch off all NMEA messages except GGA, GLL and RMC, to optimize GPS performance
 void optimizeNMEA()
 {
-  sprintf(outstring,"Optimizing NMEA messages, only GGA and RMC will be kept, rest will be switched off");
+  sprintf(outstring,"Optimizing NMEA messages, only GGA, GLL and RMC will be kept, rest will be switched off");
   logOut(2, outstring);
 
   // nur diese behalten:
   disableNMEA(0x00, 1); // GGA
   disableNMEA(0x04, 1); // RMC
+  disableNMEA(0x01, 1); // GLL
 
   // alles andere aus:
-  disableNMEA(0x01, 0); // GLL
   disableNMEA(0x02, 0); // GSA
   disableNMEA(0x03, 0); // GSV
   disableNMEA(0x05, 0); // VTG
 }
+
+// CFG-NAV5 (0x06 0x24): Get/Set Navigation Engine Settings
+const char UBLOX_MODE_PEDESTRIAN[] PROGMEM = { // Pedestrian mode, high accuracy at slow speed
+0xB5,0x62,0x06,0x24,0x24,0x00,0xFF,0xFF,0x03,0x03,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x05,0x00,0xFA,0x00,0xFA,0x00,0x64,0x00,0x2C,
+0x01,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4A,0x75 
+};
+
+// configure GPS for "pedestrian" mode: optimized accuracy for slow speeds
+void configurePedestrian(){
+  delay(100);
+  logOut(2,(char*)"configure UKHAS 'Pedestrian' Mode");
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(UBLOX_MODE_PEDESTRIAN); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_MODE_PEDESTRIAN + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+const char UBLOX_MODE_PORTABLE[] PROGMEM = { // Portable mode, default
+0xB5,0x62,0x06,0x24,0x24,0x00,0xFF,0xFF,0x00,0x03,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x05,0x00,0xFA,0x00,0xFA,0x00,0x64,0x00,0x2C,
+0x01,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x47,0x0F 
+};
+
+// configure GPS for "portable" mode (default)
+void configurePortable(){
+  delay(100);
+  logOut(2,(char*)"configure UKHAS 'Portable' Mode");
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(UBLOX_MODE_PORTABLE); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_MODE_PORTABLE + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+//UKHAS Wiki: Set GPS ot Power Save Mode (Default Cyclic 1s)
+// CFG-RXM (0x06 0x11) : Here the GPS ist set to power save mode (0x01)
+uint8_t setUKhasPSM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92 };
+// CFG-RXM (0x06 0x11) : Here the GPS ist set to continuous mode (0x00)
+uint8_t setCoM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x00, 0x21, 0x91};  
+
+// set power saving mode
+void configureUKhasPSM(){
+  delay(100);
+  logOut(2,(char*)"configure UKHAS 'Power Saving' Mode");
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(setUKhasPSM); i++) {                        
+    ss.write( pgm_read_byte(setUKhasPSM + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
 
 /*****************************************************************************! 
   @brief  setup routine
@@ -972,16 +1026,22 @@ void setup()
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
-  // GPS aggressive for quick position Fix
-  smartDelay(500); // give GPS some time to start up
-  setPSM(1000); // 1s Update, 
-  // remove unnecessary NMEA messages to optimize GPS performance
-  smartDelay(500); // give GPS some time to start up
-  optimizeNMEA();
+  //GPS aggressive for quick position Fix
+  // smartDelay(500); // give GPS some time to start up
+  // setPSM(1000); // 1s Update, does not work with NEO-6M
+  //remove unnecessary NMEA messages to optimize GPS performance
+  // smartDelay(500); // give GPS some time to start up
+  // optimizeNMEA();
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // remove unnecessary NMEA messages to optimize GPS performance
     optimizeNMEA();
+
+    // configure GPS for "pedestrian" mode: good accuracy at slow speeds
+    configurePedestrian();
+
+    // set power saving mode
+    configureUKhasPSM();
     
     // short display test
     if(testDisplayModule)
@@ -1613,8 +1673,9 @@ void doRoutineWork()
           }  
           else{
             // before sleep: reduce gps update rate to save power, and set GPS to aggressive mode for quick position fix after wakeup
-            setPSM(30000); // 30s Update,for power saving   
-            delay(50); // wait a bit for gps to adapt to new settings
+            // setPSM(30000); // 30s Update,for power saving. tested, not working for NEO-6M   
+            // delay(50); // wait a bit for gps to adapt to new settings
+
             // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
             targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;
             gotoDeepSleep(BUTTON1, targetSleepUSec); // go to deep sleep. parameters: sleeptime in us, button to wakeup from  

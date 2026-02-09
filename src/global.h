@@ -7,7 +7,11 @@
 #define logLEVEL 2              // any output with log level <= this number is logged
 #define maxLOG_STRING_LEN 240   // max len of logstring
 
-#define maxDrawBufferLen 200  // max length of draw buffer for screen data
+#define maxDrawBufferLen 1600 //200  // max length of draw buffer for screen data. 
+// determines graphics buffer size for historic positions, which remain only valid 
+// as long as anchor position, alarm radius etc are not changed.
+// with int8_t: 2 bytes , with int (int32_t) 8 bytes. ca. 400 needed for other stuff in RTC memory, so 1000 is maximum with 8 K RTC memory of ESP32
+// 4K are available. 1600 is ca. 3K. Sufficient for 26,7 hours at 1 min intervals, 8,9 h for 20 sec intervals.
 
 extern RTC_DATA_ATTR uint32_t fgndColor;
 extern RTC_DATA_ATTR uint32_t bgndColor;
@@ -48,7 +52,7 @@ enum graphWeightType{
 #define d_noGpsAlertThreshold 10
 
 // Battery Thresholds for alert
-#define BAT_VOLTAGE_THRESHOLD 3.6
+#define BAT_VOLTAGE_THRESHOLD 3.5
 #define BAT_PERCENT_THRESHOLD 10
 
 // max. time in milliseconds to remain in menu before moving to MODE_RUNNING
@@ -91,7 +95,7 @@ struct measurementData
   double anchorLon;            // anchor longitude
 
   int32_t drawCount;           // counter for display updates
-  int drawBuffer[maxDrawBufferLen][2];         // buffer for display data
+  uint8_t drawBuffer[maxDrawBufferLen][2];         // buffer for display data
   double actLat;               // actual latitude
   double actLon;               // actual longitude
   float actAnchorBearingDeg;   // anchor angle in degrees

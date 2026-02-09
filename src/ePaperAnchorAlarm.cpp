@@ -448,7 +448,7 @@ static void smartDelay(unsigned long ms)
   {
     while (ss.available()){
       ch = ss.read();
-      //Serial.write(ch); // uncomment to see raw GPS data 
+      Serial.write(ch); // uncomment to see raw GPS data 
       gps.encode(ch);
     }  
   } while (millis() - start < ms);
@@ -779,12 +779,44 @@ void writeCounterPreferences()
 */
 
 // stuff for optimization of gps receiver 
+
+size_t sendUBX(uint8_t* msg, uint8_t len) {
+  size_t written = ss.write(msg, len);
+  ss.flush();
+  delay(50);   // GPS Zeit geben
+  return(written);
+}
+
+void addChecksum(uint8_t* msg, uint8_t len) {
+  uint8_t ckA = 0, ckB = 0;
+  for (uint8_t i = 2; i < len - 2; i++) {
+    ckA += msg[i];
+    ckB += ckA;
+  }
+  msg[len - 2] = ckA;
+  msg[len - 1] = ckB;
+}
+
+// set update rate to 1 Hz, to reduce power consumption, as we do not need more frequent updates for our application.
+size_t setRate1Hz() {
+  uint8_t msg[] = {
+    0xB5,0x62,
+    0x06,0x08,     // CFG-RATE
+    0x06,0x00,
+    0xE8,0x03,     // 1000 ms
+    0x01,0x00,     // nav rate
+    0x01,0x00,     // UTC
+    0x00,0x00
+  };
+  addChecksum(msg, sizeof(msg));
+  size_t written = sendUBX(msg, sizeof(msg));
+  return written;
+}
+
 // ---------- UBX: PSM setzen ----------
 void setPSM(uint32_t updateMs) {
   uint32_t onTime = 3000;
 
-  sprintf(outstring,"Setting GPS PSM with updateMs: %ld onTime: %ld", updateMs, onTime);
-  logOut(2, outstring);
   uint8_t msg[52] = {
     0xB5,0x62, // 0 UBX message
     0x06,0x3B, // 2 Class 0x06 (CFG), ID 0x3B (PM2)
@@ -792,11 +824,11 @@ void setPSM(uint32_t updateMs) {
     0x01,0x00, // 6 version and reserved
     0x00,0x00, // 8 reserved
     0x08,0x00,0x00,0x00,  // 10 flags: bit 3 (update RTC on wakeup) and bit 0 (enable PSM) set, rest 
-    0,0,0,0,   // 14 updatePeriod
-    0,0,0,0,   // 18 searchPeriod 
-    0,0,0,0,   // 22 gridOffset
-    0,0,0,0,   // 26 onTime
-    0,0,0,0,   // 30 minAcqTime
+    0,0,0,0,   // 14 updatePeriod - The time between navigation fixes
+    0,0,0,0,   // 18 searchPeriod - How long the receiver searches for satellites if a fix is not found.
+    0,0,0,0,   // 22 gridOffset 
+    0,0,0,0,   // 26 onTime - on time after first successful fix
+    0,0,0,0,   // 30 minAcqTime -minimum search time
     0,0,0,0,   // 34
     0,0,0,0,   // 38 
     0,0,0,0,   // 42
@@ -816,6 +848,7 @@ void setPSM(uint32_t updateMs) {
   memcpy(&msg[26], &onTime, 4);
   memcpy(&msg[30], &onTime, 4); // actually minAquTime
 
+  /*
   // calculate checksum
   uint8_t ckA=0, ckB=0;
   for (int i=2; i<50; i++) {
@@ -826,9 +859,17 @@ void setPSM(uint32_t updateMs) {
   msg[51] = ckB;
 
   ss.write(msg, sizeof(msg));
+  ss.flush();
+  delay(100); // give GPS some time to process the message
+  */ 
+  addChecksum(msg, sizeof(msg));
+  size_t written = sendUBX(msg, sizeof(msg));
+  sprintf(outstring,"setPSM: updateMs: %ld onTime: %ld bytes written: %d", updateMs, onTime, written);
+  logOut(2, outstring);
 }
 
-void disableNMEA(uint8_t msg, uint8_t rate) {
+size_t disableNMEA(uint8_t msg, uint8_t rate) {
+
   uint8_t l_ubx[16] = {
     0xB5,0x62,  // UBX message
     0x06,0x01,  // Class 0x06 (CFG), ID 0x01 (MSG)
@@ -840,16 +881,29 @@ void disableNMEA(uint8_t msg, uint8_t rate) {
     0x00,0x00   // checksum a and b
   };
 
+  /*
   uint8_t ckA=0, ckB=0;
   for (int i=2;i<14;i++) { ckA+=l_ubx[i]; ckB+=ckA; }
-  l_ubx[14]=ckA; l_ubx[15]=ckB;
+    l_ubx[14]=ckA; l_ubx[15]=ckB;
   //gps.write(l_ubx,16);
-  ss.write(l_ubx,16);
+  written = ss.write(l_ubx,16);
+  ss.flush();
+  delay(50); // give GPS some time to process the message
+  */
+  addChecksum(l_ubx, sizeof(l_ubx));
+  size_t written = sendUBX(l_ubx, sizeof(l_ubx));
+
+  sprintf(outstring,"disableNMEA: msg: %d rate: %d bytes written: %d", msg, rate, written);
+  logOut(2, outstring);
+  return written;
 }
 
 // switch off all NMEA messages except GGA and RMC, to optimize GPS performance
 void optimizeNMEA()
 {
+  sprintf(outstring,"Optimizing NMEA messages, only GGA and RMC will be kept, rest will be switched off");
+  logOut(2, outstring);
+
   // nur diese behalten:
   disableNMEA(0x00, 1); // GGA
   disableNMEA(0x04, 1); // RMC
@@ -875,6 +929,10 @@ void setup()
   sprintf(outstring,"* %s %s - %s ",PROGNAME, VERSION, BUILD_DATE);
   logOut(2,outstring);
   logOut(2,(char*)"**********************************************************");
+
+  uint32_t size_wData = sizeof(wData);
+  sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
+  logOut(2,outstring);
 
   #ifdef READ_PREFERENCES
     // get data from EEPROM using preferences library in readonly mode
@@ -915,7 +973,11 @@ void setup()
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
   // GPS aggressive for quick position Fix
+  smartDelay(500); // give GPS some time to start up
   setPSM(1000); // 1s Update, 
+  // remove unnecessary NMEA messages to optimize GPS performance
+  smartDelay(500); // give GPS some time to start up
+  optimizeNMEA();
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // remove unnecessary NMEA messages to optimize GPS performance

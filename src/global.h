@@ -105,7 +105,8 @@ struct measurementData
   float actAnchorDistanceM;    // anchor distance in meters
   double actHDOP;              // GPS HDOP
   int32_t SatCnt;              // GPS visible satellites
-  double alertCount;           // counter for alert condition
+  double alertCount;           // counter for alert condition. Counts up, alert when wData.alarmThreshold exceeded
+  uint32_t noAlertsSounded;    // counter for how often an alert has sounded
   char alertReasonString[80];  // reason for alert
   int32_t alertReason;         // bitmask rason for alert 
   int32_t noGpsCount;          // counter for "no gps signal" detected
@@ -132,6 +133,7 @@ void drawWatchScreen();
 void setScreenParameters();
 void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
 void showWelcomeMessage(boolean clearScreen, char* nextMessage);
+void calcGraphStdDevXY();
 
 boolean gpsTest();
 

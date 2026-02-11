@@ -518,6 +518,7 @@ boolean gpsTest()
 {
   boolean valid;
   bool ret1, ret2, ret3;
+  uint32_t satCnt = 0;
   double hdop = 0.0;
 
   smartDelay(1000); // wait for 1 second while feeding gps object
@@ -525,18 +526,20 @@ boolean gpsTest()
 
   hdop = gps.hdop.hdop();
   ret1 = gps.location.isValid();
-  ret2 = gps.location.isUpdated();
+  ret2 = gps.location.isUpdated(); // not used, too infrequent
   ret3 = gps.hdop.isValid();
-  if (ret1 /*&& ret2 */ && ret3 && (hdop < 3.0)) // updated is infrequent, so not required for test, but if it is updated, it should be valid. HDOP should be less than 3 for good accuracy, but this is not always the case, so not required for test either.
+  satCnt = gps.satellites.value();
+  if (ret1 /*&& ret2 */ && ret3 && (hdop < 3.0) && (satCnt>3)) // updated is infrequent, so not required for test, but if it is updated, it should be valid. HDOP should be less than 3 for good accuracy, but this is not always the case, so not required for test either.
     valid = true;
   else  
     valid = false;
 
-  sprintf(outstring,"GPS test: location valid: %s, location updated: %s, HDOP valid: %s, HDOP value: %4.2f => GPS test result: %s",
+  sprintf(outstring,"GPS test: location valid: %s, location updated: %s, HDOP valid: %s, HDOP value: %4.2f Sats: %ld => GPS test result: %s",
     gps.location.isValid() ? "YES" : "NO",
     gps.location.isUpdated() ? "YES" : "NO",
     gps.hdop.isValid() ? "YES" : "NO",
     hdop,
+    satCnt,
     valid ? "PASS" : "FAIL"); 
   logOut(2, outstring);  
 
@@ -1081,6 +1084,30 @@ void setup()
 
   uint32_t size_wData = sizeof(wData);
   sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
+  logOut(2,outstring);
+
+  // get and re-set CPU clock speed
+  // https://deepbluembedded.com/esp32-change-cpu-speed-clock-frequency/
+  uint32_t CPUFreq = getCpuFrequencyMhz();
+  uint32_t XTALFreq = getXtalFrequencyMhz();
+  uint32_t ABPFreq = getApbFrequency();
+  delay(50);
+  sprintf(outstring,"Orig.Frequencies: CPU: %ld MHz XTAL: %ld MHz ABP: %ld Hz", CPUFreq, XTALFreq, ABPFreq);
+  logOut(2,outstring);
+
+  //function takes the following frequencies as valid values:
+  //  240, 160, 80    <<< For all XTAL types
+  //  40, 20, 10      <<< For 40MHz XTAL
+  //  26, 13          <<< For 26MHz XTAL
+  //  24, 12          <<< For 24MHz XTAL
+  uint32_t cpu_freq_mhz = 80;
+  setCpuFrequencyMhz(cpu_freq_mhz);
+
+  CPUFreq = getCpuFrequencyMhz();
+  XTALFreq = getXtalFrequencyMhz();
+  ABPFreq = getApbFrequency();
+  
+  sprintf(outstring,"New Frequencies: CPU: %ld MHz XTAL: %ld MHz ABP: %ld Hz", CPUFreq, XTALFreq, ABPFreq);
   logOut(2,outstring);
 
   #ifdef READ_PREFERENCES
@@ -1746,11 +1773,12 @@ void doRoutineWork()
           logOut(2, outstring);
           
           // we need a bit of time to get the GPS data
-          for(int i=0; i<3; i++)
+          for(int i=0; i<5; i++)
           {  
-            if((gps.location.isUpdated() && gps.location.isValid())) 
+            //if((gps.location.isUpdated() && gps.location.isValid())) 
+            if(gpsTest() == true)
               break;
-            smartDelay(1000);  
+            smartDelay(1000);  // white, while feeding TinyGPS++
           }    
           
           updatewData();
@@ -1762,15 +1790,19 @@ void doRoutineWork()
               wData.actAnchorDistanceM, wData.actAnchorBearingDeg); 
           logOut(2, outstring);
           //} if 
-          drawWatchScreen();
 
           // calculate and display standard deviation of plotted data 
-          calcGraphStdDevXY();
-          
+          // (should be done after populating data, which is within drawWatchScreen()to avoid being one behind)
+          // calcGraphStdDevXY(); //done: moved to drawWatchScreen()
+          // draw main watch screen  
+          drawWatchScreen();
+         
           if(wData.alertON){    
             buzzer(3, 100,50);
             //doParallelBuzzer(3, 100,50);
-            sprintf(outstring,"!!!!!!!!!!!! ALERT Reason %d %s !!!!!!!!!!!!",wData.alertReason, wData.alertReasonString);
+            wData.noAlertsSounded++;
+            sprintf(outstring,"!!!!!!!!!! %ld. ALERT Reason %d %s !!!!!!!!!!!!",
+              wData.noAlertsSounded, wData.alertReason,  wData.alertReasonString);
             logOut(2,outstring);
             smartDelay(1000);
           }  

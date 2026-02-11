@@ -725,20 +725,27 @@ void drawWatchScreen(){
       sprintf(outstring,"%ld",wData.startCounter);
       display.print(outstring);
 
+      x=0; y=6 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%ld",wData.noAlertsSounded);
+      display.print(outstring);
+
+      /* // moved to after population of arrays and recalculation
       x=0; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%3.2fm",wData.stdDevX);
+      sprintf(outstring,"%3.1fm",wData.stdDevX);
       display.print(outstring);      
 
-      sprintf(outstring,"%3.2fm",wData.stdDevY);
+      sprintf(outstring,"%3.1fm",wData.stdDevY);
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
       display.setCursor(x, y);
       display.print(outstring);
+      */
 
       x=0; y=SCREEN_HEIGHT - HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%4.1fm",wData.actAnchorDistanceM);
+      sprintf(outstring,"%3.1fm",wData.actAnchorDistanceM);
       display.print(outstring);      
 
       sprintf(outstring,"%3.0f*",wData.actAnchorBearingDeg);
@@ -962,6 +969,20 @@ void drawWatchScreen(){
       wData.drawBuffer[idx][1] = posY;
     }
     
+    // now, with buffer updated, recalculated standard deviations
+    calcGraphStdDevXY();
+    if(wData.verbosity==HI){ // and display them
+      x=0; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      sprintf(outstring,"%3.1fm",wData.stdDevX);
+      display.print(outstring);      
+
+      sprintf(outstring,"%3.1fm",wData.stdDevY);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+    }  
   }
   while (display.nextPage());
 }

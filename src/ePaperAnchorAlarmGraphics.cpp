@@ -725,15 +725,16 @@ void drawWatchScreen(){
       sprintf(outstring,"%ld",wData.startCounter);
       display.print(outstring);
 
-      x=0; y=SCREEN_HEIGHT - 1;
+      x=0; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
-      display.print(outstring);
+      sprintf(outstring,"%3.2fm",wData.stdDevX);
+      display.print(outstring);      
 
-      //x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
-      //display.setCursor(x, y);
-      //sprintf(outstring,"%4.1fm       %3.1f*",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
-      //display.print(outstring);
+      sprintf(outstring,"%3.2fm",wData.stdDevY);
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
 
       x=0; y=SCREEN_HEIGHT - HEADER_FONT_SIZE;
       display.setCursor(x, y);
@@ -744,6 +745,11 @@ void drawWatchScreen(){
       display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
       x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - HEADER_FONT_SIZE;
       display.setCursor(x, y);
+      display.print(outstring);
+
+      x=0; y=SCREEN_HEIGHT - 1;
+      display.setCursor(x, y);
+      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
       display.print(outstring);
     } // verbosity HI
     

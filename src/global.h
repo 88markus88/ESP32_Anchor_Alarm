@@ -96,6 +96,9 @@ struct measurementData
 
   int32_t drawCount;           // counter for display updates
   uint8_t drawBuffer[maxDrawBufferLen][2];         // buffer for display data
+  double stdDevX;             // Standard deviation of measurements in X [m]
+  double stdDevY;             // Standard deviation of measurements in Y [m]
+  
   double actLat;               // actual latitude
   double actLon;               // actual longitude
   float actAnchorBearingDeg;   // anchor angle in degrees

@@ -112,12 +112,6 @@ RTC_DATA_ATTR uint32_t bgndColor;
 // GPIO definition for buzzer
 #define BUZZER_PIN 2
 
-// store these variables in RTC memory, which survives deep sleep. 
-//RTC_DATA_ATTR uint32_t startCounter = 0; // 25920;  // total counter for starts of ESP32
-//RTC_DATA_ATTR uint32_t dischgCnt = 0;    // counter for starts of ESP32 since last charge
-//RTC_DATA_ATTR uint32_t prevMicrovolt = 0;
-//RTC_DATA_ATTR float prevVoltage = 0;
-
 // test control variables
 bool testRotaryEncoder = false;
 bool testGPSModule = true;
@@ -311,12 +305,6 @@ void displayGPSInfo()
   // Serial.print(F("  Date/Time: "));
   if (gps.date.isValid())
   {
-    //Serial.print(F("  Date/Time: "));
-    //Serial.print(gps.date.day());
-    //Serial.print(F("."));
-    //Serial.print(gps.date.month());
-    //Serial.print(F("."));
-    //Serial.print(gps.date.year());
     sprintf(outstring,"%s Date: %02d.%02d.%04d",
         outstring, gps.date.day(),gps.date.month(),gps.date.year());
   }
@@ -325,22 +313,8 @@ void displayGPSInfo()
     //Serial.print(F("INVALID"));
   }
 
-  //Serial.print(F(" "));
   if (gps.time.isValid())
   {
-    //Serial.print(F(" "));
-    //if (gps.time.hour() < 10) Serial.print(F("0"));
-    //Serial.print(gps.time.hour());
-    //Serial.print(F(":"));
-    //if (gps.time.minute() < 10) Serial.print(F("0"));
-    //Serial.print(gps.time.minute());
-    //Serial.print(F(":"));
-    //if (gps.time.second() < 10) Serial.print(F("0"));
-    //Serial.print(gps.time.second());
-    //Serial.print(F("."));
-    //if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    //Serial.print(gps.time.centisecond());
-    //Serial.print(F(" "));
     sprintf(outstring,"%s Time: %02d:%02d:%02d.%02d",
         outstring, gps.time.hour(),gps.time.minute(),gps.time.second(),gps.time.centisecond());
   }
@@ -585,6 +559,7 @@ struct buzzerDataType
 };
 buzzerDataType buzzerParam;
 
+// parallel function for buzzer, non-blocking
 void parallelBuzzer(void *param)
 {
   uint16_t i;
@@ -600,6 +575,7 @@ void parallelBuzzer(void *param)
   vTaskDelete(NULL);
 }    
 
+// start parallel function for buzzer, non-blocking
 void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval)
 {
   buzzerParam.number   = number;
@@ -793,46 +769,8 @@ void writePreferences()
     logOut(2,outstring); 
 }
 
-
-/*****************************************************************************! 
-  @brief  writeCounterPreferences()
-  @details writes the counter related preference data
-  @return void
-*****************************************************************************/
-/*
-void writeCounterPreferences()
-{
-  int ret11, ret12, ret13;
-  bool writing_counter_prefs = false;
-  writing_counter_prefs = true;
-  sprintf(outstring,"writeCounterPreferences: startCounter %ld dischgCnt %ld prevVoltage %f prevMicrovolt %ld\n", 
-     startCounter, dischgCnt, prevVoltage, prevMicrovolt),
-  logOut(2,outstring);
-  // open preferences namespace in rw mode mode and write preferences infos.
-  preferences.begin(prefIDENT, false);
-
-  // counters and previous microvolts
-  ret11 =   preferences.putULong("startCounter", startCounter);  
-  ret12 =   preferences.putULong("dischargeCnt", dischgCnt);
-  ret13 =   preferences.putULong("prevMicrovolt", prevMicrovolt);
-  preferences.end(); // close the namespace
-  sprintf(outstring,"Write Counter preferences startCounter: %ld %d dischgCnt: %ld %d prevMicrovolt: %ld %d\n", 
-    startCounter, ret11, dischgCnt, ret12, prevMicrovolt, ret13);
-  logOut(2,outstring);        
-}
-*/
-
 // stuff for optimization of gps receiver 
-
-// write message as a block
-/*
-size_t sendUBX(uint8_t* msg, uint8_t len) {
-  size_t written = ss.write(msg, len);
-  ss.flush();
-  delay(50);   // GPS Zeit geben
-  return(written);
-}
-*/
+// presently not used.
 
 // write message as single bytes with 5 ms pause in between
 size_t sendUBX(uint8_t* msg, uint8_t len) {
@@ -854,128 +792,12 @@ void addChecksum(uint8_t* msg, uint8_t len) {
   msg[len - 1] = ckB;
 }
 
-// set update rate to 1 Hz, to reduce power consumption, as we do not need more frequent updates for our application.
-/*
-size_t setRate1Hz() {
-  uint8_t msg[] = {
-    0xB5,0x62,
-    0x06,0x08,     // CFG-RATE
-    0x06,0x00,
-    0xE8,0x03,     // 1000 ms
-    0x01,0x00,     // nav rate
-    0x01,0x00,     // UTC
-    0x00,0x00
-  };
-  addChecksum(msg, sizeof(msg));
-  size_t written = sendUBX(msg, sizeof(msg));
-  return written;
-}
-*/
-
-// ---------- UBX: PSM setzen ----------
-/*
-void setPSM(uint32_t updateMs) {
-  uint32_t onTime = 3000;
-
-  uint8_t msg[52] = {
-    0xB5,0x62, // 0 UBX message
-    0x06,0x3B, // 2 Class 0x06 (CFG), ID 0x3B (PM2)
-    0x2C,0x00, // 4 Length of payload: 0x002C (44) bytes 
-    0x01,0x00, // 6 version and reserved
-    0x00,0x00, // 8 reserved
-    0x08,0x00,0x00,0x00,  // 10 flags: bit 3 (update RTC on wakeup) and bit 0 (enable PSM) set, rest 
-    0,0,0,0,   // 14 updatePeriod - The time between navigation fixes
-    0,0,0,0,   // 18 searchPeriod - How long the receiver searches for satellites if a fix is not found.
-    0,0,0,0,   // 22 gridOffset 
-    0,0,0,0,   // 26 onTime - on time after first successful fix
-    0,0,0,0,   // 30 minAcqTime -minimum search time
-    0,0,0,0,   // 34
-    0,0,0,0,   // 38 
-    0,0,0,0,   // 42
-    0,0
-  };
-
-  // zusatz versuch 1: set flags
-  uint32_t flags = 0x00003008; // zusätzlich zu RTC + EPH
-  memcpy(&msg[10], &flags, 4);
-
-  // zusatz versuch 2: set  searchPeriod if updateMs > 10s
-  uint32_t searchPeriod = 30000;
-  if(updateMs > 10000)        // und bei langen pausen search persiod zusätzlich setzen
-    memcpy(&msg[18], &searchPeriod, 4);
-
-  memcpy(&msg[14], &updateMs, 4);
-  memcpy(&msg[26], &onTime, 4);
-  memcpy(&msg[30], &onTime, 4); // actually minAquTime
-
-
-  //--- calculate checksum
-  //uint8_t ckA=0, ckB=0;
-  //for (int i=2; i<50; i++) {
-  //  ckA += msg[i];
-  //  ckB += ckA;
-  //}
-  //msg[50] = ckA;
-  //msg[51] = ckB;
-  //
-  //ss.write(msg, sizeof(msg));
-  //ss.flush();
-  //delay(100); // give GPS some time to process the message
-
-  addChecksum(msg, sizeof(msg));
-  size_t written = sendUBX(msg, sizeof(msg));
-  sprintf(outstring,"setPSM: updateMs: %ld onTime: %ld bytes written: %d", updateMs, onTime, written);
-  logOut(2, outstring);
-}
-*/
-
-size_t disableNMEA(uint8_t msg, uint8_t rate) {
-
-  uint8_t l_ubx[16] = {
-    0xB5,0x62,  // UBX message
-    0x06,0x01,  // Class 0x06 (CFG), ID 0x01 (MSG)
-    0x02,0x00,  // Lengh of payload: 0x0002 bytes
-    0x08,0x00,  // payload
-    0xF0,msg,   
-    0x00,rate,
-    0x00,0x00,
-    0x00,0x00   // checksum a and b
-  };
-
-  /*
-  uint8_t ckA=0, ckB=0;
-  for (int i=2;i<14;i++) { ckA+=l_ubx[i]; ckB+=ckA; }
-    l_ubx[14]=ckA; l_ubx[15]=ckB;
-  //gps.write(l_ubx,16);
-  written = ss.write(l_ubx,16);
-  ss.flush();
-  delay(50); // give GPS some time to process the message
-  */
-  addChecksum(l_ubx, sizeof(l_ubx));
-  size_t written = sendUBX(l_ubx, sizeof(l_ubx));
-
-  sprintf(outstring,"disableNMEA: msg: %d rate: %d bytes written: %d", msg, rate, written);
-  logOut(2, outstring);
-  return written;
-}
-
-// switch off all NMEA messages except GGA, GLL and RMC, to optimize GPS performance
-void optimizeNMEA()
-{
-  sprintf(outstring,"Optimizing NMEA messages, only GGA, GLL and RMC will be kept, rest will be switched off");
-  logOut(2, outstring);
-
-  // nur diese behalten:
-  disableNMEA(0x00, 1); // GGA
-  disableNMEA(0x04, 1); // RMC
-  disableNMEA(0x01, 1); // GLL
-
-  // alles andere aus:
-  disableNMEA(0x02, 0); // GSA
-  disableNMEA(0x03, 0); // GSV
-  disableNMEA(0x05, 0); // VTG
-}
-
+/*****************************************************************************! 
+  @brief  configure GPS messages
+  @details via binary UBX statement
+  @details disable all NMEA messages, tehen re-enable the required ones. Disable UBX messages
+  @return void
+*****************************************************************************/
 // these data are taken from Ublox U-Center (incl. checksums)
 const char UBLOX_MSG_INIT[] PROGMEM = {
   // Disable NMEA
@@ -1017,6 +839,12 @@ void configureGpsMessages(){
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
   }
 }  
+
+/*****************************************************************************! 
+  @brief  configure GPS for "pedestrian" mode (default) - data from UKHAS files
+  @details via binary UBX statement
+  @return void
+*****************************************************************************/
 // CFG-NAV5 (0x06 0x24): Get/Set Navigation Engine Settings
 const char UBLOX_MODE_PEDESTRIAN[] PROGMEM = { // Pedestrian mode, high accuracy at slow speed
 0xB5,0x62,0x06,0x24,0x24,0x00,0xFF,0xFF,0x03,0x03,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x05,0x00,0xFA,0x00,0xFA,0x00,0x64,0x00,0x2C,
@@ -1034,12 +862,16 @@ void configurePedestrian(){
   }
 } 
 
+/*****************************************************************************! 
+  @brief  configure GPS for "portable" mode (default) - data from UKHAS files
+  @details via binary UBX statement
+  @return void
+*****************************************************************************/
 const char UBLOX_MODE_PORTABLE[] PROGMEM = { // Portable mode, default
 0xB5,0x62,0x06,0x24,0x24,0x00,0xFF,0xFF,0x00,0x03,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x05,0x00,0xFA,0x00,0xFA,0x00,0x64,0x00,0x2C,
 0x01,0x00,0x00,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x47,0x0F 
 };
 
-// configure GPS for "portable" mode (default)
 void configurePortable(){
   delay(100);
   logOut(2,(char*)"configure UKHAS 'Portable' Mode");
@@ -1050,13 +882,17 @@ void configurePortable(){
   }
 } 
 
+/*****************************************************************************! 
+  @brief  set power saving mode - data from UKHAS files
+  @details via binary UBX statement
+  @return void
+*****************************************************************************/
 //UKHAS Wiki: Set GPS ot Power Save Mode (Default Cyclic 1s)
 // CFG-RXM (0x06 0x11) : Here the GPS ist set to power save mode (0x01)
 uint8_t setUKhasPSM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92 };
 // CFG-RXM (0x06 0x11) : Here the GPS ist set to continuous mode (0x00)
 uint8_t setCoM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x00, 0x21, 0x91};  
 
-// set power saving mode
 void configureUKhasPSM(){
   delay(100);
   logOut(2,(char*)"configure UKHAS 'Power Saving' Mode");
@@ -1075,7 +911,7 @@ void configureUKhasPSM(){
 void setup()
 {
   startTimeMillis = millis(); // remember time when woken up
-  Serial.begin(115200);   // set speed for serial monitor
+  Serial.begin(115200);       // set speed for serial monitor
 
   logOut(2,(char*)"**********************************************************");
   sprintf(outstring,"* %s %s - %s ",PROGNAME, VERSION, BUILD_DATE);
@@ -1085,6 +921,8 @@ void setup()
   uint32_t size_wData = sizeof(wData);
   sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
   logOut(2,outstring);
+
+  sprintf(wData.actConfigString,"free RTC: %d\n", 4096-size_wData);   
 
   // get and re-set CPU clock speed
   // https://deepbluembedded.com/esp32-change-cpu-speed-clock-frequency/
@@ -1102,13 +940,15 @@ void setup()
   //  24, 12          <<< For 24MHz XTAL
   uint32_t cpu_freq_mhz = 80;
   setCpuFrequencyMhz(cpu_freq_mhz);
-
+  
   CPUFreq = getCpuFrequencyMhz();
   XTALFreq = getXtalFrequencyMhz();
   ABPFreq = getApbFrequency();
   
   sprintf(outstring,"New Frequencies: CPU: %ld MHz XTAL: %ld MHz ABP: %ld Hz", CPUFreq, XTALFreq, ABPFreq);
   logOut(2,outstring);
+  sprintf(wData.actConfigString,"%sCPU: %ld MHz\n", wData.actConfigString, cpu_freq_mhz);
+
 
   #ifdef READ_PREFERENCES
     // get data from EEPROM using preferences library in readonly mode
@@ -1125,13 +965,6 @@ void setup()
    encoder.attachHalfQuad(ENCODER_CLK_PIN, ENCODER_DT_PIN);
    encoder.setCount(0);
 
-   /*
-   // initialize encoder switch at pin ENCODER_SW_PIN
-   pinMode(ENCODER_SW_PIN, INPUT_PULLUP);
-   // prepare de-bounced button
-   button.attach(ENCODER_SW_PIN);
-   button.interval(5);
-  */
   // button via interrupt
   pinMode(ENCODER_SW_PIN, INPUT_PULLUP);
   attachInterrupt(
@@ -1153,31 +986,36 @@ void setup()
   // setPSM(1000); // 1s Update, does not work with NEO-6M
   //remove unnecessary NMEA messages to optimize GPS performance
   smartDelay(500); // give GPS some time to start up
-  // optimizeNMEA(); // non-working 
+
   configureGpsMessages(); // working from gpsTest
+  sprintf(wData.actConfigString,"%sconfigGPSMsg\n", wData.actConfigString);
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
+    // show welcome message on ePaper
+    char show[30];
+    sprintf(show,"AnchorAlarm %s", VERSION);
+    showWelcomeMessage(true, show);
+    showWelcomeMessage(false,wData.actConfigString);
+
     // remove unnecessary NMEA messages to optimize GPS performance
     smartDelay(500); // give GPS some time to start up
-    // optimizeNMEA(); // non-working 
     configureGpsMessages(); // working from gpsTest
+    sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
 
     // configure GPS for "pedestrian" mode: good accuracy at slow speeds
     smartDelay(500); // give GPS some time to start up
     configurePedestrian();
+    sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
 
     // set power saving mode
     smartDelay(500); // give GPS some time to start up
     configureUKhasPSM();
+    sprintf(wData.actConfigString,"%sconfigUKhasPSM\n", wData.actConfigString);
     
     // short display test
     if(testDisplayModule)
       testDisplay();  
 
-    // show welcome message on ePaper
-    char show[30];
-    sprintf(show,"AnchorAlarm %s", VERSION);
-    showWelcomeMessage(true, show);
     showWelcomeMessage(false, (char*)"Buzzer Test");
 
     if(testBuzzer)        // buzzer test
@@ -1603,8 +1441,6 @@ void doRoutineWork()
     handleExt0Wakeup();
 
   readBatteryVoltage(&wData.batteryPercent, &wData.batteryVoltage);                  // Auslesen der Batteriespannung  
-  //wData.batteryPercent = volt;
-  //wData.batteryPercent = percent;
 
   sprintf(outstring,"doRoutineWork in wData.currentMode:  %d", wData.currentMode);
   logOut(2, outstring);
@@ -1615,8 +1451,8 @@ void doRoutineWork()
       { 
         // includes clear screen & setting of font/rotation. 
         // Otherwise following messages will show small and rotated within previous screen
-        sprintf(outstring,"AnchorAlarm %s", VERSION);
-        showWelcomeMessage(true, outstring);
+        //sprintf(outstring,"AnchorAlarm %s", VERSION);
+        //showWelcomeMessage(true, outstring);
         
         sprintf(outstring,"Wait for GPS Fix");
         showWelcomeMessage(false, outstring);

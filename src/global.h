@@ -60,15 +60,8 @@ enum graphWeightType{
 
 struct measurementData
 {
-  // admin stuff
-  bool justInitialized;   // indicator for the fact that software has just been initialized (test data)
-  bool dataPresent;       // for simulation. do not create simulation data if this is true
-  int32_t graphicsType;   // determine which graph is shown  0: pressure, 1: temperature, 2: humidity
+  //-- admin stuff
   int32_t startCounter;   // total counter for starts of ESP32
-  int32_t dischgCnt;      // counter for starts of ESP32 since last charge
-  struct timeval lastMeasurementTimestamp;  // time value when last measurement has been taken
-  struct timeval last2MeasurementTimestamp; // time value when measurement before last has been taken
-  float actSecondsSinceLastMeasurement;     // seconds elapsed since last measurement, before last deep sleep
   bool applyInversion;   // if true, white on black. otherwise black on white
 
   verbosityType   verbosity;   // determines how much detail is shown in screens
@@ -81,11 +74,10 @@ struct measurementData
   bool preferencesChanged;     // flag to indicate that a preference has been changed
   bool graphBufferClearingNeeded; // flag to indicate that graphics buffer must be cleared
 
-  int32_t targetMeasurementIntervalSec;       // sleep time target in seconds, controls the measurement
-  int32_t lastTargetSleeptime;                // last target standard sleep time in seconds
-  int64_t lastActualSleeptimeAfterMeasUsec;   // this is the number in usec actually used to set the sleep timer after last measurement
-  int64_t lastActualSleeptimeNotMeasUsec;     // this is the number in usec actually used to set the sleep timer when no measurement
+  int32_t targetMeasurementIntervalSec; // sleep time target in seconds, controls the measurement
+  char actConfigString[200];  // shows info about current configuration
 
+  // anchor and alarm stuff
   float anchorBearingDeg;      // anchor angle in degrees
   float anchorDistanceM;       // anchor distance in meters
   int32_t alarmThreshold;      // number of position deviations before alarm is triggered

@@ -23,8 +23,6 @@
   static const uint8_t EPD_SCK  = 18; // to EPD CLK
   static const uint8_t EPD_MOSI = 23; // to EPD DIN
   // display class definition  for GxRPD  from class template
-  // this works for the WeAct 4.2" ePaper 400x300
-  // GxEPD2_BW<GxEPD2_420_GDEY042T81, GxEPD2_420_GDEY042T81::HEIGHT> display(GxEPD2_420_GDEY042T81(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST, /*BUSY=D2*/ EPD_BUSY)); 
   // MP 21.12.24: my standard. Works ok in full refresh, not in partial refresh
   GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // GDEH0154D67
 
@@ -44,7 +42,6 @@
 #include <Fonts/FreeMono9pt7b.h>
 
 #include "ePaperAnchorAlarm.h"
-//#include "epaperLanguage.h"
 #include "global.h"
 
 // platformio libdeps: olikraus/U8g2_for_Adafruit_GFX@^1.8.0
@@ -62,23 +59,23 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 //****************** file global variables ********************************/
 
 //+++++++++++++++++++++++++++ clear screen using partial update ++++++++++++++
-void clearScreenPartialUpdate()
-{
-  display.setPartialWindow(0, 0, display.width(), display.height()); 
-  
-  do{
-    display.fillScreen(bgndColor);
-  }while(display.nextPage());
-}  
-
-//+++++++++++++++++++++++++++ clear screen using full update ++++++++++++++
-void clearScreenFullUpdate()
-{
-  display.setFullWindow();
-  do{
-    display.fillScreen(bgndColor);
-  }while(display.nextPage());
-};  
+//void clearScreenPartialUpdate()
+//{
+//  display.setPartialWindow(0, 0, display.width(), display.height()); 
+//  
+//  do{
+//    display.fillScreen(bgndColor);
+//  }while(display.nextPage());
+//}  
+//
+////+++++++++++++++++++++++++++ clear screen using full update ++++++++++++++
+//void clearScreenFullUpdate()
+//{
+//  display.setFullWindow();
+//  do{
+//    display.fillScreen(bgndColor);
+//  }while(display.nextPage());
+//};  
 
 // initialize display, taken from setup()
 void initDisplay(int startCounter, int fullInterval)
@@ -105,15 +102,7 @@ void initDisplay(int startCounter, int fullInterval)
     display.init(115200, false, 2, false); // initial = false for subsequent starts
     display.setPartialWindow(0, 0, display.width(), display.height());
   }
-  // set colors, if not yet initialiazed (first run of program)
-  /*
-  if((fgndColor != GxEPD_BLACK)&&(fgndColor!=GxEPD_WHITE))
-    {fgndColor = GxEPD_BLACK;bgndColor = GxEPD_WHITE;}
-  if((bgndColor != GxEPD_BLACK)&&(bgndColor!=GxEPD_WHITE))
-    {fgndColor = GxEPD_BLACK;bgndColor = GxEPD_WHITE;}
-  if(bgndColor == fgndColor)
-    {fgndColor = GxEPD_BLACK;bgndColor = GxEPD_WHITE;}  
-  */
+
   if(wData.applyInversion){
     fgndColor = GxEPD_WHITE;
     bgndColor = GxEPD_BLACK;
@@ -129,8 +118,8 @@ void initDisplay(int startCounter, int fullInterval)
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
-  u8g2Fonts.setForegroundColor(fgndColor); // apply Adafruit GFX color
-  u8g2Fonts.setBackgroundColor(bgndColor); // apply Adafruit GFX color
+  u8g2Fonts.setForegroundColor(fgndColor);   // apply Adafruit GFX color
+  u8g2Fonts.setBackgroundColor(bgndColor);   // apply Adafruit GFX color
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 
 }
@@ -148,10 +137,10 @@ void endDisplay(int mode)
 void testDisplay()
 {
   int y;  
-  //display.setRotation(1);                // Display um 90° drehen
-  display.setRotation(3);                // Display um 270° drehen
+  //display.setRotation(1);            // Display um 90° drehen
+  display.setRotation(3);              // Display um 270° drehen
   display.setTextColor(fgndColor);     // Schriftfarbe Schwarz
-  display.setFont(&FreeMonoBold18pt7b);  // Schrift definieren
+  display.setFont(&FreeMonoBold18pt7b);// Schrift definieren
 
   sprintf(outstring, "Start of testDisplay() ");
   logOut(2,outstring);
@@ -159,7 +148,6 @@ void testDisplay()
   display.firstPage();
   do{ 
     y=12;
-    //logOut(2, "2");
     // Titel schreiben
     display.setCursor(0, y);
     display.setFont(&FreeMonoBold9pt7b);
@@ -170,7 +158,6 @@ void testDisplay()
     #endif  
     display.print(outstring);
   }while (display.nextPage());
-  //logOut(2," 8");   
 }
 
 //------------------ begin weact demo functions ----------------------
@@ -339,7 +326,7 @@ void testDisplayWeAct(){
 }
 
 /*****************************************************************************! 
-  @brief  inputFirstScreen - initial screen display for input
+  @brief showWelcomeMessage - initial screen display for input
   @details 
   @return void
 *****************************************************************************/
@@ -353,12 +340,13 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
   uint16_t box_h;
   static int line = 1;
   char displstring[200];       
+
+  display.setFont(&FreeMonoBold9pt7b);// set font
+  // display.setFont(NULL); // set default 5x7 font
+  display.setTextColor(GxEPD_BLACK);  // set text color
+  display.setRotation(SCREEN_ROTATION);//and screen rotation
   
   if(clearScreen){
-    display.setFont(&FreeMonoBold9pt7b);// set font
-    // display.setFont(NULL); // set default 5x7 font
-    display.setTextColor(GxEPD_BLACK);  // set text color
-    display.setRotation(SCREEN_ROTATION);//and screen rotation
     display.setFullWindow();
     
     line = 1;    
@@ -375,7 +363,7 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
     box_x=0; 
     box_w=SCREEN_WIDTH-1;
     box_y=(line-1)*HEADER_FONT_SIZE; 
-    box_h=2*HEADER_FONT_SIZE;
+    box_h=5*HEADER_FONT_SIZE;
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.firstPage();
     do{
@@ -393,11 +381,11 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
 }
 
 /*****************************************************************************! 
-  @brief  inputFirstScreen - initial screen display for input
+  @brief  drawInputMainScreen - initial screen display for input
   @details 
   @return void
 *****************************************************************************/
-void inputFirstScreen()
+void drawInputMainScreen()
 {
   int x, y;
 
@@ -465,7 +453,7 @@ void inputFirstScreen()
 }
 
 /*****************************************************************************! 
-  @brief  drawTriangle - draw on screen
+  @brief  drawTriangle - draw on screen, used for menu 
   @details 
   @param visible - true: draw triangle, false: clear triangle
   @param xpos - x position of triangle upper left corner
@@ -495,7 +483,6 @@ void drawTriangle(bool visible,  int16_t xpos, int16_t ypos)
   } while (display.nextPage());
 }
 
-
 /*****************************************************************************! 
   @brief  setScreenParameters
   @details init screen and set font, text color, rotation
@@ -509,20 +496,6 @@ void setScreenParameters()
   display.setTextColor(GxEPD_BLACK);  // set text color
   display.setRotation(SCREEN_ROTATION);//and screen rotation
 }  
-
-/*****************************************************************************! 
-  @brief  drawInputMainScreen- display input mask on screen
-  @details 
-  @return void
-*****************************************************************************/
-void drawInputMainScreen()
-{
-  int x, y;
-  int cnt=0;
-  bool exit = false;
-
-  inputFirstScreen(); // first screen mask
-}
 
 /*****************************************************************************! 
   @brief  drawInputMainHeader - display first four lines as partial update
@@ -558,14 +531,6 @@ void drawInputHeader(){
     sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
     logOut(2, outstring);
     display.print(outstring);
-
-    /*
-    x=0; y=3*HEADER_FONT_SIZE-1;
-    display.setCursor(x, y);
-    sprintf(outstring,"S:%d H:%4.2f",wData.SatCnt,wData.actHDOP);
-    logOut(2, outstring);
-    display.print(outstring);
-    */
   }
   while (display.nextPage());
 }
@@ -761,12 +726,6 @@ void drawWatchScreen(){
     } // verbosity HI
     
     if(wData.verbosity == MED){
-      /*
-      x=0; y=2 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
-      display.print(outstring);
-      */
       x=0; y=2 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
       sprintf(outstring,"Sat:%d %3.2f",wData.SatCnt, wData.actHDOP);
@@ -799,12 +758,7 @@ void drawWatchScreen(){
       display.setCursor(x, y);
       sprintf(outstring,"%ld",wData.startCounter);
       display.print(outstring);
-      /*
-      x=0; y=SCREEN_HEIGHT - 1;
-      display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
-      display.print(outstring);
-      */
+
       x=0; y=SCREEN_HEIGHT - 1;
       display.setCursor(x, y);
       sprintf(outstring,"%4.1fm",wData.actAnchorDistanceM);
@@ -818,18 +772,6 @@ void drawWatchScreen(){
     } // verbosity MED
 
     if(wData.verbosity == LO){
-      /*
-      x=0; y=2 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
-      display.print(outstring);
-      
-      x=0; y=3 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"%d %3.2f",wData.SatCnt, wData.actHDOP);
-      display.print(outstring);
-      */
-
       x=0; y=2 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
       sprintf(outstring,"%3.2fV",wData.batteryVoltage);
@@ -863,24 +805,6 @@ void drawWatchScreen(){
       x=SCREEN_WIDTH - tbw-3; y=SCREEN_HEIGHT - 1;
       display.setCursor(x, y);
       display.print(outstring);
-
-      /*
-      x=0; y=5 * HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"%ld",wData.startCounter);
-      display.print(outstring);
-      */
-      /*
-      x=0; y=SCREEN_HEIGHT - 1;
-      display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
-      display.print(outstring);
-
-      x=0; y=SCREEN_HEIGHT-HEADER_FONT_SIZE;
-      display.setCursor(x, y);
-      sprintf(outstring,"%4.1f         %3.1f",wData.actAnchorDistanceM,wData.actAnchorBearingDeg);
-      display.print(outstring);
-      */
     }
 
     // alarm area circle and center mark

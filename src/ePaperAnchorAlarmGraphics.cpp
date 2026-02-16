@@ -363,7 +363,7 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
     box_x=0; 
     box_w=SCREEN_WIDTH-1;
     box_y=(line-1)*HEADER_FONT_SIZE; 
-    box_h=5*HEADER_FONT_SIZE;
+    box_h=7*HEADER_FONT_SIZE;
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.firstPage();
     do{
@@ -403,45 +403,49 @@ void drawInputMainScreen()
     #endif  
     display.print(outstring);
 
-    x=0; y=2*HEADER_FONT_SIZE;
+    x=0; y=2*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"%6.5f %6.5f",wData.actLat,wData.actLon);
     display.print(outstring);
-    x=0; y=3*HEADER_FONT_SIZE;
-    display.setCursor(x, y);
-    sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
-    logOut(2, outstring);
-    display.print(outstring);
-    x=0; y=5*HEADER_FONT_SIZE;
+    //x=0; y=3*INPUTDATA_FONT_SIZE;
+    //display.setCursor(x, y);
+    //sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
+    //logOut(2, outstring);
+    //display.print(outstring);
+    x=0; y=INPUTDATA_FIRST_LINE*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Anchor Bearg:");
     display.print(outstring);
-    x=0; y=6*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+1)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Anchor Dist :");
     display.print(outstring);
-    x=0; y=7*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+2)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Alert Thresh:");
     display.print(outstring);
-    x=0; y=8*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+3)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Alert Dist  :");
     display.print(outstring);
-    x=0; y=9*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+4)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Sleep Time  :");
     display.print(outstring);
-    x=0; y=10*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+5)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Detail Info :");
     display.print(outstring);
-    x=0; y=11*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+6)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Graph Weight:");
     display.print(outstring);
+    x=0; y=(INPUTDATA_FIRST_LINE+7)*INPUTDATA_FONT_SIZE;
+    display.setCursor(x, y);
+    sprintf(outstring,"Power Saving:");
+    display.print(outstring);
 
-    x=0; y=12*HEADER_FONT_SIZE;
+    x=0; y=(INPUTDATA_FIRST_LINE+8)*INPUTDATA_FONT_SIZE;
     display.setCursor(x, y);
     sprintf(outstring,"Exit        :");
     display.print(outstring);
@@ -462,7 +466,7 @@ void drawInputMainScreen()
 *****************************************************************************/
 void drawTriangle(bool visible,  int16_t xpos, int16_t ypos)
 {
-  int16_t height = HEADER_FONT_SIZE, width = 8;
+  int16_t height = INPUTDATA_FONT_SIZE, width = 8;
   display.setPartialWindow(xpos, ypos, width, height);
 
   //sprintf(outstring,"drawTriangle at %d,%d visible=%d",xpos,ypos,visible);
@@ -526,17 +530,17 @@ void drawInputHeader(){
     logOut(2, outstring);
     display.print(outstring);
     
-    x=0; y=3*HEADER_FONT_SIZE-1;
-    display.setCursor(x, y);
-    sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
-    logOut(2, outstring);
-    display.print(outstring);
+    //x=0; y=3*HEADER_FONT_SIZE-1;
+    //display.setCursor(x, y);
+    //sprintf(outstring,"Bat:%4.2fV %3.0f%%",wData.batteryVoltage,wData.batteryPercent);
+    //logOut(2, outstring);
+    //display.print(outstring);
   }
   while (display.nextPage());
 }
 
 /*****************************************************************************! 
-  @brief  drawInput Data - display data elements in right 
+  @brief  drawInput Data - display data elements in right position
   @details 
   @return void
 *****************************************************************************/
@@ -552,33 +556,33 @@ void drawInputData(){
   {
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE);
-    x=150; y=5*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+0)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f deg",wData.anchorBearingDeg);
     //sprintf(outstring,"%3.0f deg",(wData.anchorBearingDeg)+cnt%360);
     display.print(outstring);
-    x=150; y=6*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+1)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f m",wData.anchorDistanceM);
     //sprintf(outstring,"%3.0f m",wData.anchorDistanceM+cnt%100);
     display.print(outstring);
-    x=150; y=7*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+2)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3d",wData.alarmThreshold);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
-    x=150; y=8*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+3)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3.0f",wData.alarmDistanceM);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
 
-    x=150; y=9*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+4)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     sprintf(outstring,"%3ld",wData.targetMeasurementIntervalSec);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
-    x=150; y=10*HEADER_FONT_SIZE-1;
+    x=150; y=(INPUTDATA_FIRST_LINE+5)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     switch(wData.verbosity){
       case LO:
@@ -594,7 +598,8 @@ void drawInputData(){
     //sprintf(outstring,"%3d",wData.verbosity);
     //sprintf(outstring,"%3d",cnt);
     display.print(outstring);
-    x=150; y=11*HEADER_FONT_SIZE-1;
+    
+    x=150; y=(INPUTDATA_FIRST_LINE+6)*INPUTDATA_FONT_SIZE-1;
     display.setCursor(x, y);
     switch(wData.graphWeight){
       case MINIM:
@@ -605,6 +610,23 @@ void drawInputData(){
       break;
       case HEAVY:
         sprintf(outstring,"HVY");
+      break;
+    }
+    //sprintf(outstring,"%3d",wData.graphWeight);
+    //sprintf(outstring,"%3d",cnt);
+    display.print(outstring);    
+
+    x=150; y=(INPUTDATA_FIRST_LINE+7)*INPUTDATA_FONT_SIZE-1;
+    display.setCursor(x, y);
+    switch(wData.PowerSaveMode){
+      case MINIM:
+        sprintf(outstring,"MIN");
+      break;
+      case MEDIUM:
+        sprintf(outstring,"MID");
+      break;
+      case HEAVY:
+        sprintf(outstring,"MAX");
       break;
     }
     //sprintf(outstring,"%3d",wData.graphWeight);

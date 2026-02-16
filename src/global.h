@@ -41,6 +41,12 @@ enum graphWeightType{
   HEAVY  = 2
 };
 
+enum powerSaveType{
+  MIN = 0,
+  MID = 1,
+  MAX = 2
+};
+
 // defaults
 #define d_anchorBearingDeg 45 
 #define d_anchorDistanceM  23
@@ -49,6 +55,7 @@ enum graphWeightType{
 #define d_targetMeasurementIntervalSec 20
 #define d_verbosity       HI
 #define d_graphWeight     HEAVY
+#define d_powerSaveMode   MIN
 #define d_noGpsAlertThreshold 10
 
 // Battery Thresholds for alert
@@ -66,6 +73,8 @@ struct measurementData
 
   verbosityType   verbosity;   // determines how much detail is shown in screens
   graphWeightType graphWeight; // determines how thick lines and symbols are schown in screens
+  powerSaveType   PowerSaveMode; // determines degree of power saving
+
   
   bool buttonPressed;    // remembers if button has been pressed to acknowledge an alert
   bool alertON;          // remembers if an alert has been triggered
@@ -126,6 +135,7 @@ void setScreenParameters();
 void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
 void showWelcomeMessage(boolean clearScreen, char* nextMessage);
 void calcGraphStdDevXY();
+boolean gpsReEstablished(int32_t secs);
 
 boolean gpsTest();
 

@@ -647,6 +647,14 @@ void readPreferences()
     preferences.begin(prefIDENT, true);
     //----- counters etc.
     //int bytes=preferences.getBytes("prefs", prefs, sizeof(prefs));
+    //----- Power save Mode
+    if(preferences.isKey("PowerSMode"))
+      wData.PowerSaveMode = (powerSaveType)preferences.getULong("PowerSMode", d_powerSaveMode);
+    else {  // set default    
+      wData.PowerSaveMode = d_powerSaveMode;
+      preferences.putULong("PowerSMode", wData.PowerSaveMode);
+    }  
+
     //----- verbosity
     if(preferences.isKey("verbosity"))
       wData.verbosity = (verbosityType)preferences.getULong("verbosity", d_verbosity);
@@ -727,7 +735,7 @@ void readPreferences()
 *****************************************************************************/
 void writePreferences()
 {
-    size_t ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5, ret6, ret7;
+    size_t ret1, ret11, ret12, ret13, ret14, ret2, ret3, ret4, ret5, ret6, ret7;
 
     ret1=preferences.begin(prefIDENT, false);
     if(!ret1){
@@ -738,9 +746,10 @@ void writePreferences()
     // verbosity and graph weight
     ret11 =   preferences.putULong("verbosity", wData.verbosity);
     ret12 =   preferences.putULong("graphWeight", wData.graphWeight);
+    ret13 =   preferences.putULong("PowerSMode", wData.PowerSaveMode);
 
     // measurement interval in seconds
-    ret13 =   preferences.putLong("mIntervSec", wData.targetMeasurementIntervalSec);
+    ret14 =   preferences.putLong("mIntervSec", wData.targetMeasurementIntervalSec);
 
     //----- alarm distance and alarm threshold
     ret2 = preferences.putFloat("alarmDistanceM", wData.alarmDistanceM);
@@ -761,11 +770,11 @@ void writePreferences()
     sprintf(outstring,"Wrote Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
             wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
     logOut(2,outstring); 
-    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld",
+    sprintf(outstring,"Wrote Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld",
             wData.anchorBearingDeg, wData.anchorDistanceM, wData.noGpsAlertThreshold);
     logOut(2,outstring);       
     sprintf(outstring,"Wrote Preferences: ret values: %d %d %d %d %d %d %d %d %d\n", 
-                ret1, ret11, ret12, ret13, ret2, ret3, ret4, ret5, ret6);
+                ret1, ret11, ret12, ret13, ret14, ret2, ret3, ret4, ret5, ret6);
     logOut(2,outstring); 
 }
 
@@ -904,12 +913,172 @@ void configureUKhasPSM(){
 } 
 
 /*****************************************************************************! 
+  @brief  set power saving mode PM2 for 30 sec or 1 sec update
+  @details via binary UBX statement
+  @details 30 sec to save power, 1 sec for normal fast operation
+  @return void
+*****************************************************************************/
+
+//// CFG-PM2 (0x06 0x3B) - extended Power Management configuration
+//const char UBLOX_PM2_30SEC[] PROGMEM = { // configure power management to 30000 ms updatePeriod. old, possibly wrong
+//  // searchPeriod: 30000 ms minAquTime: 0 ms onTime: 2000 ms
+//0xB5,0x62,0x06,0x3B,0x2C,0x00,0x01,0x06,0x00,0x00,0x0E,0x90,0x42,0x01,0xE8,0x03,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x02,
+//0x00,0x00,0x00,0x2C,0x01,0x00,0x00,0x4F,0xC1,0x03,0x00,0x87,0x02,0x00,0x00,0xFF,0x00,0x00,0x00,0x64,0x40,0x01,0x00,0xE6,0xAE
+//};
+//
+//const char UBLOX_PM2_1SEC[] PROGMEM = { // configure power management to 1000 ms updatePeriod, possibly wrong
+//  // searchPeriod: 1000 ms minAquTime: 0 ms onTime: 2000 ms
+//0xB5,0x62,0x06,0x3B,0x2C,0x00,0x01,0x06,0x00,0x00,0x0E,0x90,0x42,0x01,0xE8,0x03,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x02,
+//0x00,0x00,0x00,0x2C,0x01,0x00,0x00,0x4F,0xC1,0x03,0x00,0x87,0x02,0x00,0x00,0xFF,0x00,0x00,0x00,0x64,0x40,0x01,0x00,0xE6,0xAE   
+//};
+
+const char UBLOX_PM2_1SEC[] PROGMEM = { // configure power management to 1000 ms updatePeriod. from U-Center 15.2.26
+// 1000 ms update period (E8 03), 10 sec search period, 0 minAcqTime, 0 On Time
+0xB5,0x62,0x06,0x3B,0x2C,0x00,0x01,0x06,0x00,0x00,0x0E,0x10,0x42,0x01,0xE8,0x03,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x00,0x00,0x00,0x2C,0x01,0x00,0x00,0x4F,0xC1,0x03,0x00,0x86,0x02,0x00,0x00,0xFE,0x00,0x00,0x00,0x64,0x40,0x01,0x00,0x62,0xEA 
+};
+
+// CFG-PM2 (0x06 0x3B) - extended Power Management configuration
+const char UBLOX_PM2_10SEC[] PROGMEM = { // configure power management to 10000 ms updatePeriod. from U-Center 15.2.26
+// 10000 ms update period (10 27), 10 sec search period, 0 minAcqTime, 0 On Time
+0xB5,0x62,0x06,0x3B,0x2C,0x00,0x01,0x06,0x00,0x00,0x0E,0x10,0x42,0x01,0x10,0x27,0x00,0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x00,0x00,0x00,0x2C,0x01,0x00,0x00,0x4F,0xC1,0x03,0x00,0x86,0x02,0x00,0x00,0xFE,0x00,0x00,0x00,0x64,0x40,0x01,0x00,0xAE,0x76
+};
+
+void configurePM2Slow(){
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(UBLOX_PM2_10SEC); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_PM2_10SEC + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+void configurePM2Fast(){
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(UBLOX_PM2_1SEC); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_PM2_1SEC + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+// UKHAS Wiki: Switch the RF GPS section off, draws about 5mA, retains its settings, 
+//             wakes on serial command.
+// CFG-RST (0x06 0x04) Reset Receiver / Clear Backup Data Structures
+// 0x08: controlled gps stop. 
+// The receiver will not be restarted, but will stop any GPS related processing
+uint8_t GPSoff[] = {0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00,0x08, 0x00, 0x16, 0x74};
+
+// 0x09: controlled gps start
+uint8_t GPSon[] =  {0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00,0x09, 0x00, 0x17, 0x76};
+
+// Abschalten des HF Teils und und der Messages vom GPS.
+// TinyGPS zeigt immer noch die jeweils letzten Daten als valide an. 
+void configureUKhasGPSoff(){
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(GPSoff); i++) {                        
+    ss.write( pgm_read_byte(GPSoff + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+// Wieder einschalten des HF Teils und der Messages des GPS. Funktioniert, braucht aber ein par sec bis wieder valide Daten kommen
+void configureUKhasGPSon(){
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(GPSon); i++) {                        
+    ss.write( pgm_read_byte(GPSon + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+void configurePowerSaveMode(bool switchON)
+{
+  if(switchON){  
+    #ifdef NEO_6M
+      if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
+        // remove unnecessary NMEA messages to optimize GPS performance
+        smartDelay(50); // give GPS some time to start up
+        configureGpsMessages(); // working from gpsTest
+        sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
+        smartDelay(50); // give GPS some time to start up
+        sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
+        configurePedestrian();
+      }
+
+      if(wData.PowerSaveMode == MID){
+        // configure GPS for "pedestrian" mode: good accuracy at slow speeds
+        smartDelay(500); // give GPS some time to start up
+        // set power saving mode
+        smartDelay(500); // give GPS some time to start up
+        configureUKhasPSM();
+        sprintf(wData.actConfigString,"%sconfigUKhasPSM\n", wData.actConfigString);
+      } 
+
+      if(wData.PowerSaveMode == MAX){
+        configureUKhasGPSon();
+        sprintf(wData.actConfigString,"%sconfigGPSOn\n", wData.actConfigString);
+        smartDelay(2000); // give GPS some time to start up
+      }  
+    #endif
+
+    #ifdef NEO_M8N 
+      if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
+        // remove unnecessary NMEA messages to optimize GPS performance
+        smartDelay(50); // give GPS some time to start up
+        configureGpsMessages(); // working from gpsTest
+        sprintf(wData.actConfigString,"%sconfigGPSMsg\n", wData.actConfigString);
+        smartDelay(50); // give GPS some time to start up
+        configurePedestrian();
+        sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
+      }  
+
+      if(wData.PowerSaveMode == MID){
+        // set power saving mode      
+        configurePM2Fast; 
+        sprintf(wData.actConfigString,"%sConfigPM2Fast\n", wData.actConfigString);
+        smartDelay(50); // give GPS some time to start up
+      }  
+
+      if(wData.PowerSaveMode == MAX){
+        configureUKhasGPSon(); // switch on GPS HF electronics
+        sprintf(wData.actConfigString,"%sconfigGPSOn\n", wData.actConfigString);
+        smartDelay(100); // give GPS some time to start up
+        // then check if reception re-estabilshed. alert if not.
+        boolean ret = gpsReEstablished(wData.noGpsAlertThreshold);
+        if(!ret){
+          wData.validGPSLocation = false;  
+          wData.alertON = true;
+          wData.alertReason += 8;
+          strcat(wData.alertReasonString,"Invalid GPS Loc.  ");
+        }
+        smartDelay(2000); // give GPS some time to stabilize data
+      }  
+    #endif
+  }
+  else{ // switch off
+    #ifdef NEO_M8N
+      if(wData.PowerSaveMode == MID){
+        configurePM2Slow();
+        delay(50); // wait a bit for gps to adapt to new settings
+      }
+
+      if(wData.PowerSaveMode == MAX){
+        configureUKhasGPSoff();
+        smartDelay(100); // give GPS some time to process
+        }
+    #endif 
+  }  
+}
+
+
+/*****************************************************************************! 
   @brief  setup routine
   @details 
   @return void
 *****************************************************************************/
 void setup()
 {
+  uint32_t cpu_freq_mhz;
+
   startTimeMillis = millis(); // remember time when woken up
   Serial.begin(115200);       // set speed for serial monitor
 
@@ -938,8 +1107,13 @@ void setup()
   //  40, 20, 10      <<< For 40MHz XTAL
   //  26, 13          <<< For 26MHz XTAL
   //  24, 12          <<< For 24MHz XTAL
-  uint32_t cpu_freq_mhz = 80;
-  setCpuFrequencyMhz(cpu_freq_mhz);
+
+  #if defined NEO_M8N || defined NEO_6M
+    if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
+      cpu_freq_mhz = 80;
+      setCpuFrequencyMhz(cpu_freq_mhz);
+    }
+  #endif
   
   CPUFreq = getCpuFrequencyMhz();
   XTALFreq = getXtalFrequencyMhz();
@@ -981,14 +1155,8 @@ void setup()
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
-  //GPS aggressive for quick position Fix
-  // smartDelay(500); // give GPS some time to start up
-  // setPSM(1000); // 1s Update, does not work with NEO-6M
-  //remove unnecessary NMEA messages to optimize GPS performance
-  smartDelay(500); // give GPS some time to start up
-
-  configureGpsMessages(); // working from gpsTest
-  sprintf(wData.actConfigString,"%sconfigGPSMsg\n", wData.actConfigString);
+  // configure GPS for startup
+  configurePowerSaveMode(true);
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // show welcome message on ePaper
@@ -997,21 +1165,9 @@ void setup()
     showWelcomeMessage(true, show);
     showWelcomeMessage(false,wData.actConfigString);
 
-    // remove unnecessary NMEA messages to optimize GPS performance
-    smartDelay(500); // give GPS some time to start up
-    configureGpsMessages(); // working from gpsTest
-    sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
-
-    // configure GPS for "pedestrian" mode: good accuracy at slow speeds
-    smartDelay(500); // give GPS some time to start up
-    configurePedestrian();
-    sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
-
-    // set power saving mode
-    smartDelay(500); // give GPS some time to start up
-    configureUKhasPSM();
-    sprintf(wData.actConfigString,"%sconfigUKhasPSM\n", wData.actConfigString);
-    
+    // configure GPS for startup
+    configurePowerSaveMode(true);
+        
     // short display test
     if(testDisplayModule)
       testDisplay();  
@@ -1232,10 +1388,16 @@ boolean handleParamChange(int trianglePos)
     case 4: // sleep time
       {
         int64_t encoderPos = -encoder.getCount();
+        encoder.clearCount(); // experimental: can avoid double action every time?
         if(encoderPos != 0){
-          wData.targetMeasurementIntervalSec += 5*encoderPos; // each step is 5 seconds
-          if(wData.targetMeasurementIntervalSec < 1)
-            wData.targetMeasurementIntervalSec = 1; // minimum 1 second
+          //wData.targetMeasurementIntervalSec += encoderPos; // each step is 1 seconds. Immer doppelt...
+          // einfach nur auf +/- dämpft das besser
+          if(encoderPos > 0)
+            wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec + 1; 
+          else if(encoderPos < 0)
+            wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec - 1; 
+          if(wData.targetMeasurementIntervalSec < 0)
+            wData.targetMeasurementIntervalSec = 0; // minimum 0 second
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           sprintf(outstring,"handleParamChange: targetMeasurementIntervalSec to %ld [s]", wData.targetMeasurementIntervalSec);
           logOut(2, outstring);
@@ -1303,7 +1465,29 @@ boolean handleParamChange(int trianglePos)
         }  // encoder
       }
       break; 
-    case 7: // exit parameter change mode
+    case 7: // power save mode 
+      {
+        int64_t encoderPos = -encoder.getCount();
+        if(encoderPos != 0){
+          // einfach nur auf +/- dämpft das besser
+          if(encoderPos > 0)
+            wData.PowerSaveMode = (enum powerSaveType)(wData.PowerSaveMode + 1); 
+          else if(encoderPos < 0)
+            wData.PowerSaveMode = (enum powerSaveType)(wData.PowerSaveMode - 1); 
+          if(wData.PowerSaveMode > MAX) 
+            wData.PowerSaveMode = MIN; // handle runover, valid are 0..2
+          if(wData.PowerSaveMode < MIN) 
+            wData.PowerSaveMode = MAX; // handle runover, valid are 0..2                
+
+          wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
+          sprintf(outstring,"handleParamChange: PowerSaveMode to %ld [s]", wData.PowerSaveMode);
+          logOut(2, outstring);
+          encoder.setCount(0); // reset encoder count
+          drawInputData(); // redraw input data
+        }  // encoder
+      }
+      break;       
+    case 8: // exit parameter change mode
       {
         logOut(2, (char*)"handleParamChange: !!!!!!!!! EXIT !!!!!!!!!");
         return false;
@@ -1344,7 +1528,7 @@ boolean gpsReEstablished(int32_t secs)
     smartDelay(1000); // wait a second, polling for gps data
     //if (gps.location.isValid()){
     if (gps.location.isValid() &&
-        gps.location.isUpdated() &&
+        // gps.location.isUpdated() && // not used, too infrequent
         gps.hdop.isValid() &&
         gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
       wData.noGpsCount = 0;
@@ -1509,7 +1693,7 @@ void doRoutineWork()
             else if(encoderPos < 0)
               trianglePos ++; // increase
             if(trianglePos < 0) // wrap around
-              trianglePos = NUM_INPUTDATA_LINES-1;  // max of 8 positions 0..7
+              trianglePos = NUM_INPUTDATA_LINES-1;  // max of 9 positions 0..8
             trianglePos = (trianglePos) % NUM_INPUTDATA_LINES; // 8 positions
             sprintf(outstring,"doRoutineWork: Encoder triggered. encoderPos: %ld New trianglePos: %d", (int32_t)encoderPos, trianglePos);
             logOut(2, outstring);
@@ -1576,6 +1760,7 @@ void doRoutineWork()
         } 
 
         if(handleParamchanges){
+          drawTriangle(true,INPUTDATA_X_POS, trianglePos * INPUTDATA_FONT_SIZE + INPUTDATA_Y_POS); // draw triangle
           boolean ret = handleParamChange(trianglePos); // handle parameter change within a line
           if(!ret){ // exit parameter change mode, go to running mode - anchor alarm active
             handleParamchanges = false;
@@ -1644,8 +1829,7 @@ void doRoutineWork()
           }  
           else{
             // before sleep: reduce gps update rate to save power, and set GPS to aggressive mode for quick position fix after wakeup
-            // setPSM(30000); // 30s Update,for power saving. tested, not working for NEO-6M   
-            // delay(50); // wait a bit for gps to adapt to new settings
+            configurePowerSaveMode(false);
 
             // sleep for a time: switch off display, deep sleep for ESP32, leave gps receiving
             targetSleepUSec= wData.targetMeasurementIntervalSec * SECONDS;

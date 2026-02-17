@@ -47,7 +47,7 @@ The watch screen shows the anchor at the center (cross), the safe circle around 
 
 ## Power Saving Modes
 Since the device has limited battery capacity, power saving is available. Thre modes can be switched in the setup menu. Depending on the GPS module which is installed, different measures are taken:
-|Mode           | NEO-6M                      | NEO-M8N                      |
+| Mode          | NEO-6M                      | NEO-M8N                      |
 | ------------- | -------------               | -------------                |
 | MIN           | 80 MHz, NMEA Msg, Ped       | 80 MHz, NMEA Msg, Ped        |
 | MID           | 80 MHz, NMEA Msg, Ped, PSM  | 80 MHz, NMEA Msg, Ped, PM2   |
@@ -77,16 +77,16 @@ Presently the schematic is available as Fritzing file.
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
 
 ## Electrical Connections:
-|KY-040|     |
-|-----|------|
+| KY-040| .     |
+| ----- |------ |
 | VCC | 3.3V |
 | GND | GND |
 | SW  | GPIO26 |
 | DT  | GPIO 27 |
 | CLK | GPIO 22 |
 
-|Voltage measurement |    |
-|-----|------|
+|Voltage measurement | .   |
+| ----- | ------ |
 | GPIO | 39 |
 
 Epaper:<br>

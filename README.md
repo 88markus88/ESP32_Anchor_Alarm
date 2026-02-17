@@ -34,6 +34,7 @@ Then the main menu is shown. Rotate the knob to move through the menu or change 
 9: Sleeptime - Time in seconds that the device sleeps between measurements (unless there is an alert, then it does not go to sleep)<br>
 10: Detail Info - Determines how much data is shown in the watch (routine) screen<br>
 11: Graph Weight - Determines how thick the lines and symbols are drawn in the watch screen<br>
+12: Power Saving Mode - Determines how aggressive power saving is applied
 12: Exit: Exit the menu, change to measurement screen and starts the watch<br>
 
 The watch screen shows the anchor at the center (cross), the safe circle around it and the boat as a "target" in relation to the anchor. Depending on the detail info selected, further information is shown:
@@ -43,6 +44,25 @@ The watch screen shows the anchor at the center (cross), the safe circle around 
 - Measurement Counter, how often did the device wake up and checked the position
 - Battery voltage and percentage
 - Distance from and bearing from initial anchor position to boat. (If the boat is SW of the anchor position, the bearing is 235°)
+
+## Power Saving Modes
+Since the device has limited battery capacity, power saving is available. Thre modes can be switched in the setup menu. Depending on the GPS module which is installed, different measures are taken:
+| Mode          | NEO-6M                      | NEO-M8N                      |
+| ------------- | -------------               | -------------                |
+| MIN           | 80 MHz, NMEA Msg, Ped       | 80 MHz, NMEA Msg, Ped        |
+| MID           | 80 MHz, NMEA Msg, Ped, PSM  | 80 MHz, NMEA Msg, Ped, PM2   |
+| MAX           | 80 MHz, NMEA Msg, Ped, PM2  | 80 MHz, NMEA Msg, Ped, HF Off|
+
+* 80 MHz: Reduce clock frequency for ESP32 from 240 to 80 MHz
+* MEA Msg: Switch off all NMEA messages that are not neede. ONly RMC, GGA, GLL are left on (CFG-MSH
+* Ped: Switch the GPS module to pedestrian mode, for better precision at slow speeds (CFG-NAV5)
+* PSM: Switch GPS Module to PowerSavineMode (CFG-RXM)
+* PM2: Configure extended Power Management to longer updatePeriod (CFG-PM2)
+* HF Off: Switch off the GPS module HF section (CFG-RST). Biggest savings, but required time to re-acquire satellites
+
+The effect of power saving (80 MHz) reduces the ESP32 power consumption to ca. 75 mA while not in deep sleep.<br>
+The power consumption of the NEO-M8N is reduced to 45 mA in "MIN" mode to 28 mA in "MAX" mode.<br>
+Precision of position is better in MIN mode than in MAX mode - depending on the quality of satellite data.
 
 ## Alert condition 
 An alert is triggered if any of the following conditions is true:
@@ -57,34 +77,39 @@ Presently the schematic is available as Fritzing file.
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
 
 ## Electrical Connections:
-KY-040:<br>
-VCC - 3.3V<br>
-GND - GND<br>
-SW - GPIO26<br>
-DT - GPIO 27<br>
-CLK - GPIO 22<br>
+| KY-040| .     |
+| ----- |------ |
+| VCC | 3.3V |
+| GND | GND |
+| SW  | GPIO26 |
+| DT  | GPIO 27 |
+| CLK | GPIO 22 |
 
-Voltage measurement:<br>
-GPIO 39<br>
+|Voltage measurement | .   |
+| ----- | ------ |
+| GPIO | 39 |
 
-Epaper:<br>
-BUSY - GPIO 04 [15]<br>
-RST - GPIO 16 [RES, 2]<br>
-DC - GPIO 17 [D/C]<br>
-CS - GPIO 05 [SS, 4]<br>
-CLK - GPIO 18 [SCK, SCL, 18]<br>
-DIN - GPIO 23 [MOSI, SDA, Data/ 23]<br>
-GND - GND<br>
-VCC - 3.3V<br>
+| Epaper | .   |
+| ----- | ------ |
+| BUSY | GPIO 04 [15] |
+| RST  | GPIO 16 [RES, 2] |
+| DC   | GPIO 17 [D/C] |
+| CS   | GPIO 05 [SS, 4] |
+| CLK  | GPIO 18 [SCK, SCL, 18] |
+| DIN  | GPIO 23 [MOSI, SDA, Data/ 23] |
+| GND  | GND |
+| VCC  | 3.3V |
 
-Buzzer:<br>
-Base - K Ohm - GPIO2<br>
+| Buzzer  | .   |
+| -----   | ------ |
+| Base    | via 2 K Ohm -> GPIO2 |
 
-NEO-6M GPS<br>
-RX -  GPIO15 (SDA)<br>
-TX - GPIO19 (SCL)<br>
-GND-GND<br>
-3.3 - 3.3 V<br>
+| NEO-6M / M8N GPS | .   |
+| -----            | ------ |
+| RX               |  GPIO15 (SDA) |
+| TX               | GPIO19 (SCL) |
+| GND              | GND |
+| 3.3              | 3.3 V |
 
 ## PCB - Printed Circuit Board
 For my first trials I have re-used a board that I previously used for another project. It does not fit exactly, but all required GPIOs are exposed.

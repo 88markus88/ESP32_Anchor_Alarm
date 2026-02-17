@@ -77,7 +77,7 @@ Presently the schematic is available as Fritzing file.
 <img src="./Fritzing/ePaperAnkeralarm-Fritzing.jpg">
 
 ## Electrical Connections:
-KY-040:<br>
+|KY-040|     |
 |-----|------|
 | VCC | 3.3V |
 | GND | GND |
@@ -85,8 +85,9 @@ KY-040:<br>
 | DT  | GPIO 27 |
 | CLK | GPIO 22 |
 
-Voltage measurement:<br>
-GPIO 39<br>
+|Voltage measurement |    |
+|-----|------|
+| GPIO | 39 |
 
 Epaper:<br>
 BUSY - GPIO 04 [15]<br>

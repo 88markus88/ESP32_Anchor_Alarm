@@ -990,6 +990,60 @@ void configureUKhasGPSon(){
   }
 } 
 
+//---------------- Power save configuration as proposed in Ublox application note 
+//---------------- Power Management Considerations for u-blox 7 and M8 GNSS receivers
+// Three Steps:
+// 1. UBX-CFG GNSS configuration to disable Glonass, Galileo, Beidou (M8N can do power save only with GPS)
+// 2. UBX-CFG PM2  configuration to set desired PM Mode: on/ off or cyclic mode (we are using cyclic)
+// 3. UBX-CFG RXM  configuration to set power mode to "1 - Power Save Mode"
+
+const char UBLOX_GNSS_ONLY_GPS[] PROGMEM = { // configure CFG - GNSS to GPS satellites only
+0xB5,0x62,0x06,0x3E,0x3C,0x00,0x00,0x00,0x16,0x07,0x00,0x08,0xFF,0x00,0x01,0x00,0x00,
+0x01,0x01,0x00,0x03,0x00,0x01,0x00,0x00,0x01,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x01,
+0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x05,
+0x00,0x03,0x00,0x00,0x00,0x00,0x01,0x06,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xC8,0xDA
+};
+
+const char UBLOX_GNSS_PM2_CYCLIC[] PROGMEM = { // configure CFG-PM2 - cyclic, updatePerios 10000ms, searchPeriod 10s, minAquTime 0, OnTime 2s
+0xB5,0x62,0x06,0x3B,0x2C,0x00,0x01,0x06,0x00,0x00,0x0E,0x90,0x42,0x01,0x10,0x27,0x00,
+0x00,0x10,0x27,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x2C,0x01,0x00,0x00,
+0x4F,0xC1,0x03,0x00,0x87,0x02,0x00,0x00,0xFF,0x00,0x00,0x00,0x64,0x40,0x01,0x00,0x32,
+0x3A
+};  
+
+const char UBLOX_GNSS_RXM[] PROGMEM = { // configure CFG - GNSS to GPS satellites only
+0xB5,0x62,0x06,0x11,0x02,0x00,0x08,0x01,0x22,0x92   
+};
+
+// configure power save as described in Ublox application note
+void configurePowerSaveAppNote()
+{
+  // send configuration data in UBX protocol: Only GPS active
+  for(int i = 0; i < sizeof(UBLOX_GNSS_ONLY_GPS); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_GNSS_ONLY_GPS + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+  smartDelay(50);
+  // send configuration data in UBX protocol: configure PM2 to cyclic
+  for(int i = 0; i < sizeof(UBLOX_GNSS_PM2_CYCLIC); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_GNSS_PM2_CYCLIC + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }  
+  smartDelay(50);
+  // send configuration data in UBX protocol: configure RXM to power save mode
+  for(int i = 0; i < sizeof(UBLOX_GNSS_RXM); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_GNSS_RXM + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }  
+}
+
+/*****************************************************************************! 
+  @brief  configurePowerSaveMode
+  @details 
+  @param  bool switchON. true:  switch all power stuff for ESP32 running
+  @param                 false: switch power stuff for ESP32 deep sleep
+  @return void
+*****************************************************************************/
 void configurePowerSaveMode(bool switchON)
 {
   if(switchON){  
@@ -999,14 +1053,14 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(50); // give GPS some time to start up
         configureGpsMessages(); // working from gpsTest
         sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
+
+        // configure GPS for "pedestrian" mode: good accuracy at slow speeds
         smartDelay(50); // give GPS some time to start up
-        sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
         configurePedestrian();
+        sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
       }
 
       if(wData.PowerSaveMode == MID){
-        // configure GPS for "pedestrian" mode: good accuracy at slow speeds
-        smartDelay(500); // give GPS some time to start up
         // set power saving mode
         smartDelay(500); // give GPS some time to start up
         configureUKhasPSM();
@@ -1014,7 +1068,7 @@ void configurePowerSaveMode(bool switchON)
       } 
 
       if(wData.PowerSaveMode == MAX){
-        configureUKhasGPSon();
+        configurePM2Fast();
         sprintf(wData.actConfigString,"%sconfigGPSOn\n", wData.actConfigString);
         smartDelay(2000); // give GPS some time to start up
       }  
@@ -1033,8 +1087,10 @@ void configurePowerSaveMode(bool switchON)
 
       if(wData.PowerSaveMode == MID){
         // set power saving mode      
-        configurePM2Fast; 
-        sprintf(wData.actConfigString,"%sConfigPM2Fast\n", wData.actConfigString);
+        //configurePM2Fast; 
+        // sprintf(wData.actConfigString,"%sConfigPM2Fast\n", wData.actConfigString);
+        configurePowerSaveAppNote(); //!!! switches off all satellites other than GPS!
+        sprintf(wData.actConfigString,"%sConfigAppNote\n", wData.actConfigString);
         smartDelay(50); // give GPS some time to start up
       }  
 
@@ -1066,6 +1122,12 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(100); // give GPS some time to process
         }
     #endif 
+    #ifdef NEO_6M
+       if(wData.PowerSaveMode == MAX){
+        configurePM2Slow();
+        delay(50); // wait a bit for gps to adapt to new settings
+      }
+    #endif
   }  
 }
 

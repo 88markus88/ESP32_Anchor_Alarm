@@ -60,8 +60,8 @@ Since the device has limited battery capacity, power saving is available. Thre m
 * PM2: Configure extended Power Management to longer updatePeriod (CFG-PM2)
 * HF Off: Switch off the GPS module HF section (CFG-RST). Biggest savings, but required time to re-acquire satellites
 
-The effect of power saving (80 MHz) reduces the ESP32 power consumption to ca. 75 mA while not in deep sleep.
-The power consumption of the NEO-M8N is reduced to 45 mA in "MIN" mode to 28 mA in "MAX" mode
+The effect of power saving (80 MHz) reduces the ESP32 power consumption to ca. 75 mA while not in deep sleep.<br>
+The power consumption of the NEO-M8N is reduced to 45 mA in "MIN" mode to 28 mA in "MAX" mode.<br>
 Precision of position is better in MIN mode than in MAX mode - depending on the quality of satellite data.
 
 ## Alert condition 

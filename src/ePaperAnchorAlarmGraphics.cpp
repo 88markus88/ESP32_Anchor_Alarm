@@ -328,9 +328,12 @@ void testDisplayWeAct(){
 /*****************************************************************************! 
   @brief showWelcomeMessage - initial screen display for input
   @details 
+  @param boolean clearScreen  determines if screen is cleared before showing message
+  @param char* nextMessage    message string
+  @param uint16_t msgLines    # of lines in message string
   @return void
 *****************************************************************************/
-void showWelcomeMessage(boolean clearScreen, char* nextMessage)
+void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLines)
 {
   int x, y;
   // box parameters for partial screen update
@@ -363,7 +366,7 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
     box_x=0; 
     box_w=SCREEN_WIDTH-1;
     box_y=(line-1)*HEADER_FONT_SIZE; 
-    box_h=7*HEADER_FONT_SIZE;
+    box_h=(1+msgLines)*HEADER_FONT_SIZE;
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.firstPage();
     do{
@@ -377,7 +380,7 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage)
   sprintf(displstring,"showWelcomeMessage line: %d x: %d y: %d box_x: %d box_y :%d box_w: %d box_h: %d Msg: _%s_\n", 
                                                 line,  x,    y,        box_x,    box_y,    box_w,    box_h,   nextMessage);
   logOut(2, displstring);   
-  line++;
+  line += msgLines;
 }
 
 /*****************************************************************************! 

@@ -522,6 +522,35 @@ boolean gpsTest()
 }
 
 /**************************************************!
+   @brief    gpsReEstablished
+   @details  helper function to check for gps reception coming back for x seconds
+   @param    int32_t secs: tries for this time to establish gps connection
+   @return   true if gps location is valid, else false
+***************************************************/
+boolean gpsReEstablished(int32_t secs)
+{
+  int i;
+  for(i=0;i<secs; i++){
+    smartDelay(1000); // wait a second, polling for gps data
+    //if (gps.location.isValid()){
+    if (gps.location.isValid() &&
+        // gps.location.isUpdated() && // not used, too infrequent
+        gps.hdop.isValid() &&
+        gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
+      wData.noGpsCount = 0;
+      sprintf(outstring,"Good GPS location re-estabilshed in %d of %ld", i, secs);
+      logOut(2, outstring);
+      return(true);
+    }
+    wData.noGpsCount++;
+  }
+  sprintf(outstring,"!!!!! GPS location remains lost for %ld secs - Alarm", i, secs);
+  logOut(2, outstring);
+  return(false);
+}
+
+
+/**************************************************!
    @brief    buzzer()
    @details  Function to create a buzzer sound
    @param    uint16_t number    : how many buzzes
@@ -900,14 +929,24 @@ void configurePortable(){
 // CFG-RXM (0x06 0x11) : Here the GPS ist set to power save mode (0x01)
 uint8_t setUKhasPSM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92 };
 // CFG-RXM (0x06 0x11) : Here the GPS ist set to continuous mode (0x00)
-uint8_t setCoM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x00, 0x21, 0x91};  
+uint8_t setUKhasCoM[] = { 0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x00, 0x21, 0x91};  
 
-void configureUKhasPSM(){
+void configureUKhasPSM(){ // power saving mode
   delay(100);
   logOut(2,(char*)"configure UKHAS 'Power Saving' Mode");
   // send configuration data in UBX protocol
   for(int i = 0; i < sizeof(setUKhasPSM); i++) {                        
     ss.write( pgm_read_byte(setUKhasPSM + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }
+} 
+
+void configureUKhasCoM(){ // continuous mode
+  delay(100);
+  logOut(2,(char*)"configure UKHAS 'Power Saving' Mode");
+  // send configuration data in UBX protocol
+  for(int i = 0; i < sizeof(setUKhasCoM); i++) {                        
+    ss.write( pgm_read_byte(setUKhasCoM + i) );
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
   }
 } 
@@ -1018,11 +1057,11 @@ const char UBLOX_GNSS_RXM[] PROGMEM = { // configure CFG - GNSS to GPS satellite
 // configure power save as described in Ublox application note
 void configurePowerSaveAppNote()
 {
-  // send configuration data in UBX protocol: Only GPS active
-  for(int i = 0; i < sizeof(UBLOX_GNSS_ONLY_GPS); i++) {                        
-    ss.write( pgm_read_byte(UBLOX_GNSS_ONLY_GPS + i) );
-    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
-  }
+  // send configuration data in UBX protocol: Only GPS active, not Glonass, Beidou, Galileo
+  //for(int i = 0; i < sizeof(UBLOX_GNSS_ONLY_GPS); i++) {                        
+  //  ss.write( pgm_read_byte(UBLOX_GNSS_ONLY_GPS + i) );
+  //  delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  //}
   smartDelay(50);
   // send configuration data in UBX protocol: configure PM2 to cyclic
   for(int i = 0; i < sizeof(UBLOX_GNSS_PM2_CYCLIC); i++) {                        
@@ -1035,6 +1074,24 @@ void configurePowerSaveAppNote()
     ss.write( pgm_read_byte(UBLOX_GNSS_RXM + i) );
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
   }  
+}
+
+/*****************************************************************************! 
+  @brief  resetPowerSaveMode() : reset all power save stuff to a neutral status
+  @details 
+  @return void
+*****************************************************************************/
+void resetPowerSaveMode(){
+
+  logOut(2,(char *)"resetPowerSaveMode: cont. mode, PM2 to fast, GPS HF to ON");
+  // UKHAS power save mode -> continuous mode
+  configureUKhasCoM();
+
+  // PM2
+  configurePM2Fast();
+
+  // switch on GPS HF electronics
+  configureUKhasGPSon(); 
 }
 
 /*****************************************************************************! 
@@ -1053,11 +1110,14 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(50); // give GPS some time to start up
         configureGpsMessages(); // working from gpsTest
         sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
+        wData.linesInConfigString++;
+        wData.lines
 
         // configure GPS for "pedestrian" mode: good accuracy at slow speeds
         smartDelay(50); // give GPS some time to start up
         configurePedestrian();
         sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
+        wData.linesInConfigString++;
       }
 
       if(wData.PowerSaveMode == MID){
@@ -1065,11 +1125,13 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(500); // give GPS some time to start up
         configureUKhasPSM();
         sprintf(wData.actConfigString,"%sconfigUKhasPSM\n", wData.actConfigString);
+        wData.linesInConfigString++;
       } 
 
       if(wData.PowerSaveMode == MAX){
         configurePM2Fast();
         sprintf(wData.actConfigString,"%sconfigGPSOn\n", wData.actConfigString);
+        wData.linesInConfigString++;
         smartDelay(2000); // give GPS some time to start up
       }  
     #endif
@@ -1080,23 +1142,28 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(50); // give GPS some time to start up
         configureGpsMessages(); // working from gpsTest
         sprintf(wData.actConfigString,"%sconfigGPSMsg\n", wData.actConfigString);
+        wData.linesInConfigString++;
         smartDelay(50); // give GPS some time to start up
         configurePedestrian();
         sprintf(wData.actConfigString,"%sconfigPedestrian\n", wData.actConfigString);
+        wData.linesInConfigString++;
       }  
 
       if(wData.PowerSaveMode == MID){
         // set power saving mode      
         //configurePM2Fast; 
         // sprintf(wData.actConfigString,"%sConfigPM2Fast\n", wData.actConfigString);
+        // wData.linesInConfigString++;
         configurePowerSaveAppNote(); //!!! switches off all satellites other than GPS!
         sprintf(wData.actConfigString,"%sConfigAppNote\n", wData.actConfigString);
+        wData.linesInConfigString++;
         smartDelay(50); // give GPS some time to start up
       }  
 
       if(wData.PowerSaveMode == MAX){
         configureUKhasGPSon(); // switch on GPS HF electronics
         sprintf(wData.actConfigString,"%sconfigGPSOn\n", wData.actConfigString);
+        wData.linesInConfigString++;
         smartDelay(100); // give GPS some time to start up
         // then check if reception re-estabilshed. alert if not.
         boolean ret = gpsReEstablished(wData.noGpsAlertThreshold);
@@ -1106,7 +1173,7 @@ void configurePowerSaveMode(bool switchON)
           wData.alertReason += 8;
           strcat(wData.alertReasonString,"Invalid GPS Loc.  ");
         }
-        smartDelay(2000); // give GPS some time to stabilize data
+        smartDelay(500); // give GPS some time to stabilize data
       }  
     #endif
   }
@@ -1153,7 +1220,8 @@ void setup()
   sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
   logOut(2,outstring);
 
-  sprintf(wData.actConfigString,"free RTC: %d\n", 4096-size_wData);   
+  sprintf(wData.actConfigString,"free RTC: %d\n", 4096-size_wData);   // also pre-sets wData.actConfigString and deletes old content
+  wData.linesInConfigString = 1;
 
   // get and re-set CPU clock speed
   // https://deepbluembedded.com/esp32-change-cpu-speed-clock-frequency/
@@ -1218,23 +1286,29 @@ void setup()
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
   // configure GPS for startup
-  configurePowerSaveMode(true);
+  //configurePowerSaveMode(true);
 
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // show welcome message on ePaper
     char show[30];
     sprintf(show,"AnchorAlarm %s", VERSION);
-    showWelcomeMessage(true, show);
-    showWelcomeMessage(false,wData.actConfigString);
+    showWelcomeMessage(true, show, 1);
+  
+    showWelcomeMessage(false,(char*)"Waiting for GPS", 1);
+    if(gpsReEstablished(60))
+      showWelcomeMessage(false,(char*)"GPS Fix OK", 1);
+    else
+      showWelcomeMessage(false,(char*)"No GPS Fix",1 );
 
     // configure GPS for startup
     configurePowerSaveMode(true);
-        
+    showWelcomeMessage(false,wData.actConfigString, wData.linesInConfigString);
+
     // short display test
     if(testDisplayModule)
       testDisplay();  
 
-    showWelcomeMessage(false, (char*)"Buzzer Test");
+    showWelcomeMessage(false, (char*)"Buzzer Test" ,1);
 
     if(testBuzzer)        // buzzer test
       //buzzer(1,100,500); 
@@ -1254,7 +1328,7 @@ void setup()
     boolean buttonPressed = false; 
     int64_t encoderPos = 0;
     if(testRotaryEncoder){
-      showWelcomeMessage(false, (char*)"Encoder Test");
+      showWelcomeMessage(false, (char*)"Encoder Test",1);
       for(int i=0;i<30;i++) {
         testRotary(&buttonPressed, &encoderPos );
         delay(500);
@@ -1262,7 +1336,7 @@ void setup()
     }  
 
     if(testGPSModule){
-      showWelcomeMessage(false, (char*)"GPS Test");
+      showWelcomeMessage(false, (char*)"GPS Test",1);
       logOut(2,(char*)"GPS serial started.");
       getGPSStartPosition(&startLat, &startLon); // get start position from GPS
 
@@ -1542,6 +1616,7 @@ boolean handleParamChange(int trianglePos)
             wData.PowerSaveMode = MAX; // handle runover, valid are 0..2                
 
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
+          wData.powerSaveChanged = true;   // flag to indicate that power save mode has changed
           sprintf(outstring,"handleParamChange: PowerSaveMode to %ld [s]", wData.PowerSaveMode);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
@@ -1580,29 +1655,6 @@ void clearGraphBuffer(int callerID)
     wData.drawBuffer[i][0] = 0;
     wData.drawBuffer[i][1] = 0;
     }
-}
-
-// helper function to check for gps reception coming back for x seconds
-boolean gpsReEstablished(int32_t secs)
-{
-  int i;
-  for(i=0;i<secs; i++){
-    smartDelay(1000); // wait a second, polling for gps data
-    //if (gps.location.isValid()){
-    if (gps.location.isValid() &&
-        // gps.location.isUpdated() && // not used, too infrequent
-        gps.hdop.isValid() &&
-        gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
-      wData.noGpsCount = 0;
-      sprintf(outstring,"Good GPS location re-estabilshed in %d of %ld", i, secs);
-      logOut(2, outstring);
-      return(true);
-    }
-    wData.noGpsCount++;
-  }
-  sprintf(outstring,"!!!!! GPS location remains lost for %ld secs - Alarm", i, secs);
-  logOut(2, outstring);
-  return(false);
 }
 
 // helper function to populate the wData structure
@@ -1698,10 +1750,10 @@ void doRoutineWork()
         // includes clear screen & setting of font/rotation. 
         // Otherwise following messages will show small and rotated within previous screen
         //sprintf(outstring,"AnchorAlarm %s", VERSION);
-        //showWelcomeMessage(true, outstring);
+        //showWelcomeMessage(true, outstring,1);
         
         sprintf(outstring,"Wait for GPS Fix");
-        showWelcomeMessage(false, outstring);
+        showWelcomeMessage(false, outstring,1);
         do{
           sprintf(outstring,"doRoutineWork: MODE_STARTED, waiting for GPS fix... %d", cnt);
           logOut(2, outstring);
@@ -1711,11 +1763,11 @@ void doRoutineWork()
 
         if(gpsValid){
           sprintf(outstring,"Valid GPS Fix");
-          showWelcomeMessage(false, outstring);
+          showWelcomeMessage(false, outstring,1);
         }
         else{
           sprintf(outstring,"NO GPS Fix");
-          showWelcomeMessage(false, outstring);
+          showWelcomeMessage(false, outstring,1);
         }  
         //smartDelay(1000);
         setScreenParameters();
@@ -1826,6 +1878,15 @@ void doRoutineWork()
           boolean ret = handleParamChange(trianglePos); // handle parameter change within a line
           if(!ret){ // exit parameter change mode, go to running mode - anchor alarm active
             handleParamchanges = false;
+            if(wData.powerSaveChanged){     // power save mode has changed.
+              resetPowerSaveMode();         // reset power save settings
+              configurePowerSaveMode(true); // configure new power saving settings
+              if(gpsReEstablished(60))      // wait for GPS fix, max 60 sec
+                showWelcomeMessage(false,(char*)"GPS Fix OK", 1);
+              else
+                showWelcomeMessage(false,(char*)"No GPS Fix",1 );
+            }
+
             // get anchor position from current GPS position
             getGPSStartPosition(&wData.actLat, &wData.actLon); // get averaged boat start position from GPS
             sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Current GPS position Lat: %6.4f Lon: %6.4f", 

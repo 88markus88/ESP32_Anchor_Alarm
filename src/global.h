@@ -81,10 +81,12 @@ struct measurementData
   bool validGPSLocation; // true if valid gps location, otherwise false
   mainLoopMode currentMode; // current main loop mode
   bool preferencesChanged;     // flag to indicate that a preference has been changed
+  bool powerSaveChanged;       // flag to indicate that power save mode has changed
   bool graphBufferClearingNeeded; // flag to indicate that graphics buffer must be cleared
 
   int32_t targetMeasurementIntervalSec; // sleep time target in seconds, controls the measurement
   char actConfigString[200];  // shows info about current configuration
+  uint16_t linesInConfigString; // number of lines contained in config string
 
   // anchor and alarm stuff
   float anchorBearingDeg;      // anchor angle in degrees
@@ -133,7 +135,7 @@ void drawTriangle(bool visible, int16_t xpos, int16_t ypos);
 void drawWatchScreen();
 void setScreenParameters();
 void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
-void showWelcomeMessage(boolean clearScreen, char* nextMessage);
+void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLines);
 void calcGraphStdDevXY();
 boolean gpsReEstablished(int32_t secs);
 

@@ -113,8 +113,9 @@ RTC_DATA_ATTR uint32_t bgndColor;
 #define BUZZER_PIN 2
 
 // test control variables
+bool testWelcomeMessage = false;
 bool testRotaryEncoder = false;
-bool testGPSModule = true;
+bool testGPSModule = false;
 bool testBuzzer = true;
 bool testDisplayModule = false;
 
@@ -463,7 +464,7 @@ static void smartDelay(unsigned long ms)
   {
     while (ss.available()){
       ch = ss.read();
-      Serial.write(ch); // uncomment to see raw GPS data 
+      // Serial.write(ch); // uncomment to see raw GPS data 
       gps.encode(ch);
     }  
   } while (millis() - start < ms);
@@ -538,13 +539,13 @@ boolean gpsReEstablished(int32_t secs)
         gps.hdop.isValid() &&
         gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
       wData.noGpsCount = 0;
-      sprintf(outstring,"Good GPS location re-estabilshed in %d of %ld", i, secs);
+      sprintf(outstring,"gpsReEstablished: GPS Fix in %d of %ld", i, secs);
       logOut(2, outstring);
       return(true);
     }
     wData.noGpsCount++;
   }
-  sprintf(outstring,"!!!!! GPS location remains lost for %ld secs - Alarm", i, secs);
+  sprintf(outstring,"gpsReEstablished: GPS Fix remains lost for %ld secs - Alarm", i, secs);
   logOut(2, outstring);
   return(false);
 }
@@ -752,8 +753,8 @@ void readPreferences()
     sprintf(outstring,"Read Preferences: verbosity: %ld graphWeight: %ld Meas.IntervalSec %ld alarmDistance %3.1f alarmThreshold %ld",
             wData.verbosity, wData.graphWeight, wData.targetMeasurementIntervalSec, wData.alarmDistanceM, wData.alarmThreshold);
     logOut(2,outstring); 
-    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld",
-            wData.anchorBearingDeg, wData.anchorDistanceM, wData.noGpsAlertThreshold);
+    sprintf(outstring,"Read Preferences: anchorBearingDeg: %3.1f anchorDistanceM: %3.1f noGpsAlertThreshold: %ld PowerSaveMode : %d",
+            wData.anchorBearingDeg, wData.anchorDistanceM, wData.noGpsAlertThreshold, wData.PowerSaveMode);
     logOut(2,outstring);         
 }    
 
@@ -1198,6 +1199,98 @@ void configurePowerSaveMode(bool switchON)
   }  
 }
 
+/*****************************************************************************! 
+  @brief  startupGPSSafely()
+  @details checks if we have a fix, if not tries to re-establish
+  @details if that does not work within first time, reduce powerSaveMode to MIN and try again
+  @details if that does not work: message and return
+  @param uint32_t  secs1: first waiting time for GPS fix until reduction of power save mode
+  @param uint32_t  secs2: second waiting time for GPS fix after reduction of power save mode
+  @return true if started properly, false if not.
+*****************************************************************************/
+bool startupGPSSafely(uint32_t  secs1, uint32_t secs2){
+    sprintf(outstring,"************ startupGPSSafely: started");
+    logOut(2, outstring);  
+  if(gpsReEstablished(secs1)){
+    sprintf(outstring,"startupGPSSafely: GPS Fix OK");
+    logOut(2, outstring);
+    //showWelcomeMessage(false,outstring, 1);
+    return true;
+  }
+  else{ // gps fix not re-established within time1 secs
+    sprintf(outstring,"-------- startupGPSSafely: NO Fix within %ld seconds. Retry.", secs1);
+    logOut(2, outstring);  
+    if(wData.PowerSaveMode > MIN){
+      wData.PowerSaveMode = MIN;
+      // wData.preferencesChanged = true; // ensures that new power save mode is written to preferences
+      resetPowerSaveMode();
+      smartDelay(500);
+      configurePowerSaveMode(true);
+      if(gpsReEstablished(secs2)){
+        sprintf(outstring,"startupGPSSafely: GPS Fix OK after reducing powerSaveMode to MIN");
+        logOut(2, outstring);
+        //showWelcomeMessage(false,outstring, 1);
+        return true;
+      }
+      else{
+        sprintf(outstring,"startupGPSSafely: GPS Fix NOT OK after reducing powerSaveMode to MIN");
+        logOut(2, outstring);
+        showWelcomeMessage(true,(char*)"GPS Fix NOT OK\nafter powerSave\nset to MIN", 1);
+        smartDelay(1000);
+        return false;
+      }  
+    }
+    else{
+      if(gpsReEstablished(secs2)){
+        sprintf(outstring,"startupGPSSafely: GPS Fix already in PowerSaveMode MIN. OK after retry");
+        logOut(2, outstring);
+        //showWelcomeMessage(false,outstring, 1);
+        return true;
+      }
+      else{
+        sprintf(outstring,"startupGPSSafely: GPS Fix already in PowerSaveMode MIN. NOT OK after retry");
+        logOut(2, outstring);
+        //showWelcomeMessage(false,outstring, 1);
+        return false;
+      }
+    }
+
+  }  
+  return true;
+}
+
+// test function for welcome messages on ePaper
+void testWelcomeMessages()
+{
+  char show[100];
+  sprintf(show,"AnchorAlarm %s", VERSION);
+  showWelcomeMessage(true, show, 1);
+  sprintf(outstring,"testWelcomeMessage: _%s_", show);
+  logOut(2, outstring);
+  buzzer(1, 100,10);
+  smartDelay(1000);
+
+  sprintf(show,"12345678901234");
+  showWelcomeMessage(false, show, 1);
+  sprintf(outstring,"testWelcomeMessage: _%s_", show);
+  logOut(2, outstring);
+  smartDelay(1000);
+  sprintf(show,"GPS Fix OK");
+  showWelcomeMessage(false, show, 1);
+  sprintf(outstring,"testWelcomeMessage: _%s_", show);
+  logOut(2, outstring);
+  smartDelay(1000);
+  sprintf(show,"No GPS Fix");
+  showWelcomeMessage(false, show, 1);
+  sprintf(outstring,"testWelcomeMessage: _%s_", show);
+  logOut(2, outstring);
+  smartDelay(1000);
+  sprintf(show,"abcdefghijklmn\ntest123\nline3");
+  showWelcomeMessage(false, show, 3); 
+  sprintf(outstring,"testWelcomeMessage: _%s_", show);
+  logOut(2, outstring);
+  smartDelay(3000);
+}
 
 /*****************************************************************************! 
   @brief  setup routine
@@ -1207,6 +1300,7 @@ void configurePowerSaveMode(bool switchON)
 void setup()
 {
   uint32_t cpu_freq_mhz;
+  char show[30];
 
   startTimeMillis = millis(); // remember time when woken up
   Serial.begin(115200);       // set speed for serial monitor
@@ -1215,6 +1309,10 @@ void setup()
   sprintf(outstring,"* %s %s - %s ",PROGNAME, VERSION, BUILD_DATE);
   logOut(2,outstring);
   logOut(2,(char*)"**********************************************************");
+
+  //sprintf(show,"AnchorAlarm %s", VERSION);
+  //showWelcomeMessage(true, show, 1);
+  //buzzer(1, 100,10);
 
   uint32_t size_wData = sizeof(wData);
   sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
@@ -1252,6 +1350,7 @@ void setup()
   sprintf(outstring,"New Frequencies: CPU: %ld MHz XTAL: %ld MHz ABP: %ld Hz", CPUFreq, XTALFreq, ABPFreq);
   logOut(2,outstring);
   sprintf(wData.actConfigString,"%sCPU: %ld MHz\n", wData.actConfigString, cpu_freq_mhz);
+  wData.linesInConfigString++;
 
 
   #ifdef READ_PREFERENCES
@@ -1281,28 +1380,37 @@ void setup()
   logOut(2,(char*)"before initDisplay()");
   initDisplay(wData.startCounter, FULL_UPDATE_INTERVAL); 
 
+  // test for welcome messages on ePaper. Must be after initialization of display.
+  if(testWelcomeMessage){
+    buzzer(1, 100,10);
+    testWelcomeMessages();
+  }
+
   // Serial port for GPS module
   ss.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX
   gpsTimerHandle = gpsTimer.setInterval(200L, gpsHandler); // set gps test timer to 100 milliseconds
 
-  // configure GPS for startup
-  //configurePowerSaveMode(true);
-
   if(wData.currentMode == MODE_STARTED){ // tests only with fresh start, to prevent this stuff when waking up after sleep
     // show welcome message on ePaper
-    char show[30];
     sprintf(show,"AnchorAlarm %s", VERSION);
     showWelcomeMessage(true, show, 1);
-  
-    showWelcomeMessage(false,(char*)"Waiting for GPS", 1);
-    if(gpsReEstablished(60))
-      showWelcomeMessage(false,(char*)"GPS Fix OK", 1);
-    else
-      showWelcomeMessage(false,(char*)"No GPS Fix",1 );
 
     // configure GPS for startup
     configurePowerSaveMode(true);
     showWelcomeMessage(false,wData.actConfigString, wData.linesInConfigString);
+
+    // check GPS. If no fix: check if powerSaveMode is > MIN (MID or MAX) => set to MIN and try some more
+    sprintf(show,"startupGPS safely");
+    showWelcomeMessage(false, show, 1);
+    if(startupGPSSafely(120, 60)){
+      sprintf(outstring,"setup: GPS Fix OK");
+      logOut(2, outstring);
+    }
+    else{
+      sprintf(outstring,"setup: GPS Fix NOT OK");
+      logOut(2, outstring);
+      buzzer(2, 200,100);
+    }
 
     // short display test
     if(testDisplayModule)
@@ -1353,7 +1461,22 @@ void setup()
       Serial.print(F(", "));
       Serial.println(anchorLon, 6);
     }
-  }  // if just started
+  }  // if MODE_STARTED
+  else{ // all other modes
+    // check GPS. If no fix: check if powerSaveMode is > MIN (MID or MAX) => set to MIN and try some more
+    if(startupGPSSafely(120, 60)){
+      sprintf(outstring,"setup: GPS Fix OK");
+      logOut(2, outstring);
+    }
+    else{
+      sprintf(outstring,"setup: GPS Fix NOT OK");
+      logOut(2, outstring);
+      sprintf(show,"!!No GPS Fix!!");
+      showWelcomeMessage(false, show, 1);
+      buzzer(2, 200,100);
+      smartDelay(1000);
+    }
+  }
 
 } // setup
 
@@ -1722,6 +1845,7 @@ void updatewData()
     wData.noGpsCount = 0;   
 }
 
+// main routine work function
 void doRoutineWork()
 {
   int cnt = 0;
@@ -1753,7 +1877,7 @@ void doRoutineWork()
         //showWelcomeMessage(true, outstring,1);
         
         sprintf(outstring,"Wait for GPS Fix");
-        showWelcomeMessage(false, outstring,1);
+        showWelcomeMessage(true, outstring,1);
         do{
           sprintf(outstring,"doRoutineWork: MODE_STARTED, waiting for GPS fix... %d", cnt);
           logOut(2, outstring);

@@ -6,7 +6,11 @@
 
 // Input data screen parameters
 #define HEADER_FONT_SIZE        16
+#define HEADER_FONT_DESCENDERS  4   // Teile unter der Basislinie
+#define HEADER_FONT_CAPITALS    10  // Teile über der Basislinie
 #define DATA_FONT_SIZE          16
+#define DATA_FONT_DESCENDERS  4   // Teile unter der Basislinie
+#define DATA_FONT_CAPITALS    10  // Teile über der Basislinie
 #define HEADER_Y_POS            0
 #define HEADER_X_POS            0
 #define HEADER_WIDTH            SCREEN_WIDTH

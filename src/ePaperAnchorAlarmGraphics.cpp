@@ -335,10 +335,12 @@ void testDisplayWeAct(){
 *****************************************************************************/
 void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLines)
 {
-  int x, y;
+  int x, y0, y_text;
   // box parameters for partial screen update
   int box_x; 
   int box_y;
+  //int h_line = HEADER_FONT_SIZE; // real scheint der font etwas höher zu sein, wichtig bei Umbrüchen
+  uint8_t h_line = FreeMonoBold9pt7b.yAdvance; // höhe  einer Textzeile
   uint16_t box_w;
   uint16_t box_h;
   static int line = 1;
@@ -349,38 +351,52 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLine
   display.setTextColor(GxEPD_BLACK);  // set text color
   display.setRotation(SCREEN_ROTATION);//and screen rotation
   
-  if(clearScreen){
+  // The font "FreeMonoBold9pt7b" is approx 16 Pixels high. Captial letters are 10 pixels high.
+  // Letters are placed at the baseline of the font (lower left of a captial Character)
+  // Characters that go below the baseline can be 3 pixels below (HEADER_FONT_DESCENDERS)
+  // Boxes are determined by the upper left corner, same as the coordinate system
+  // e.g.: line 2 (3rd line): Box y0 = 2 * HEADER_FONT_SIZE = 32. 
+  // Box Y goes from 32..32+15 = 48. (Next line starts with Y0 = 48)
+  // Text must be placed at y = y0 + HEADER_FONT_SIZE - HEADER_FONT_DESCENDERS - 1 = 32+16-4-1 = 43
+  // if text contains multiple lines (line breaks \n in string) this is taken into account by parameter
+  // msgLines. Last position is kept in this function as static int "line"
+
+  if(clearScreen){ //clear full screen and set text into first line.
     display.setFullWindow();
-    
-    line = 1;    
-    x=0; y= line*HEADER_FONT_SIZE-1;
+    line = 0;    
+    x=0; y0 = line * h_line; // upper corner of box
+    y_text = y0 + h_line - HEADER_FONT_DESCENDERS - 1; 
     display.firstPage();
     do{
       display.fillScreen(GxEPD_WHITE);
-
-      display.setCursor(x, y);
+      display.setCursor(x, y_text);
       display.print(nextMessage);  
     } while (display.nextPage());
   }
   else{ // not clearScreen
+    y0 = line * h_line; // upper corner of box
     box_x=0; 
-    box_w=SCREEN_WIDTH-1;
-    box_y=(line-1)*HEADER_FONT_SIZE; 
-    box_h=(1+msgLines)*HEADER_FONT_SIZE;
+    box_w = SCREEN_WIDTH-1;
+    box_y = y0; 
+    box_h= msgLines * h_line;
     display.setPartialWindow(box_x, box_y, box_w, box_h);
     display.firstPage();
     do{
       display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE); 
-      x=0; y= (line)*HEADER_FONT_SIZE-1;
-      display.setCursor(x, y);
-      display.setCursor(x, y);
+      //display.fillRect(box_x, box_y, box_w, box_h, GxEPD_BLACK); 
+      //display.setTextColor(GxEPD_WHITE);  // set text color
+      //delay(1000);
+      x=0; 
+      y_text = y0 + h_line - HEADER_FONT_DESCENDERS - 1; 
+      display.setCursor(x, y_text);
       display.print(nextMessage);                 
     } while (display.nextPage());     
   }  
-  sprintf(displstring,"showWelcomeMessage line: %d x: %d y: %d box_x: %d box_y :%d box_w: %d box_h: %d Msg: _%s_\n", 
-                                                line,  x,    y,        box_x,    box_y,    box_w,    box_h,   nextMessage);
+  sprintf(displstring,"showWelcomeMessage clearScreen: %d h_line: %d line: %d x: %d y0: %d box_x: %d box_y :%d box_w: %d box_h: %d Msg: _%s_\n", 
+                                          clearScreen,    h_line,    line,    x,    y0,        box_x,    box_y,    box_w,    box_h,   nextMessage);
   logOut(2, displstring);   
   line += msgLines;
+  delay(1000);
 }
 
 /*****************************************************************************! 

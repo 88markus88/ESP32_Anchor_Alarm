@@ -736,6 +736,14 @@ void drawWatchScreen(){
       sprintf(outstring,"%ld",wData.noAlertsSounded);
       display.print(outstring);
 
+      if(wData.PowerSaveMode == MIN)  sprintf(outstring,"MIN");
+      if(wData.PowerSaveMode == MID)  sprintf(outstring,"MID");
+      if(wData.PowerSaveMode == MAX)  sprintf(outstring,"MAX");
+      display.getTextBounds(outstring, 0, 0, &tbx, &tby, &tbw, &tbh); // center right
+      x=SCREEN_WIDTH - tbw-3; y=6 * HEADER_FONT_SIZE;
+      display.setCursor(x, y);
+      display.print(outstring);
+
       /* // moved to after population of arrays and recalculation
       x=0; y=SCREEN_HEIGHT - 2*HEADER_FONT_SIZE;
       display.setCursor(x, y);

@@ -464,7 +464,7 @@ static void smartDelay(unsigned long ms)
   {
     while (ss.available()){
       ch = ss.read();
-      // Serial.write(ch); // uncomment to see raw GPS data 
+      Serial.write(ch); // uncomment to see raw GPS data 
       gps.encode(ch);
     }  
   } while (millis() - start < ms);
@@ -532,6 +532,7 @@ boolean gpsReEstablished(int32_t secs)
 {
   int i;
   for(i=0;i<secs; i++){
+    Serial.print(".");
     smartDelay(1000); // wait a second, polling for gps data
     //if (gps.location.isValid()){
     if (gps.location.isValid() &&
@@ -539,13 +540,13 @@ boolean gpsReEstablished(int32_t secs)
         gps.hdop.isValid() &&
         gps.hdop.hdop() < 3.0){ // check for valid gps location with good hdop, otherwise may be just some old data
       wData.noGpsCount = 0;
-      sprintf(outstring,"gpsReEstablished: GPS Fix in %d of %ld", i, secs);
+      sprintf(outstring,"\ngpsReEstablished: GPS Fix in %d of %ld", i, secs);
       logOut(2, outstring);
       return(true);
     }
     wData.noGpsCount++;
   }
-  sprintf(outstring,"gpsReEstablished: GPS Fix remains lost for %ld secs - Alarm", i, secs);
+  sprintf(outstring,"\ngpsReEstablished: GPS Fix remains lost for %ld secs - Alarm", i, secs);
   logOut(2, outstring);
   return(false);
 }
@@ -872,6 +873,8 @@ const char UBLOX_MSG_INIT[] PROGMEM = {
 };
 
 void configureGpsMessages(){
+  sprintf(outstring,"configureGPSMessages");
+  logOut(2,outstring);
   // send configuration data in UBX protocol
   for(int i = 0; i < sizeof(UBLOX_MSG_INIT); i++) {                        
     ss.write( pgm_read_byte(UBLOX_MSG_INIT+i) );
@@ -987,6 +990,8 @@ const char UBLOX_PM2_10SEC[] PROGMEM = { // configure power management to 10000 
 
 void configurePM2Slow(){
   // send configuration data in UBX protocol
+  sprintf(outstring,"configurePM2Slow");
+  logOut(2,outstring);
   for(int i = 0; i < sizeof(UBLOX_PM2_10SEC); i++) {                        
     ss.write( pgm_read_byte(UBLOX_PM2_10SEC + i) );
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
@@ -995,6 +1000,8 @@ void configurePM2Slow(){
 
 void configurePM2Fast(){
   // send configuration data in UBX protocol
+  sprintf(outstring,"configurePM2Fast");
+  logOut(2,outstring);
   for(int i = 0; i < sizeof(UBLOX_PM2_1SEC); i++) {                        
     ss.write( pgm_read_byte(UBLOX_PM2_1SEC + i) );
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
@@ -1015,6 +1022,8 @@ uint8_t GPSon[] =  {0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00,0x09, 0x00, 0
 // TinyGPS zeigt immer noch die jeweils letzten Daten als valide an. 
 void configureUKhasGPSoff(){
   // send configuration data in UBX protocol
+  sprintf(outstring,"configureUKhasGPSoff");
+  logOut(2,outstring);
   for(int i = 0; i < sizeof(GPSoff); i++) {                        
     ss.write( pgm_read_byte(GPSoff + i) );
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
@@ -1023,6 +1032,8 @@ void configureUKhasGPSoff(){
 
 // Wieder einschalten des HF Teils und der Messages des GPS. Funktioniert, braucht aber ein par sec bis wieder valide Daten kommen
 void configureUKhasGPSon(){
+  sprintf(outstring,"configureUKhasGPSon");
+  logOut(2,outstring);  
   // send configuration data in UBX protocol
   for(int i = 0; i < sizeof(GPSon); i++) {                        
     ss.write( pgm_read_byte(GPSon + i) );
@@ -1058,6 +1069,8 @@ const char UBLOX_GNSS_RXM[] PROGMEM = { // configure CFG - GNSS to GPS satellite
 // configure power save as described in Ublox application note
 void configurePowerSaveAppNote()
 {
+  sprintf(outstring,"configurePowerSaveAppNote");
+  logOut(2,outstring); 
   // send configuration data in UBX protocol: Only GPS active, not Glonass, Beidou, Galileo
   //for(int i = 0; i < sizeof(UBLOX_GNSS_ONLY_GPS); i++) {                        
   //  ss.write( pgm_read_byte(UBLOX_GNSS_ONLY_GPS + i) );
@@ -1077,22 +1090,63 @@ void configurePowerSaveAppNote()
   }  
 }
 
+// Revert to last saved configuration (CFG-CFG)
+const char UBLOX_REVERT_SAVED[] PROGMEM = {
+0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x01,0x1B,0xB1
+};
+
+void revertUbloxToLastSavedConfig()
+{
+  sprintf(outstring,"revertUbloxToLastSavedConfig");
+  logOut(2,outstring); 
+  for(int i = 0; i < sizeof(UBLOX_REVERT_SAVED); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_REVERT_SAVED + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }  
+  smartDelay(50);
+}
+
+// Revert to default configuration (CFG-CFG)
+const char UBLOX_REVERT_DEFAULT[] PROGMEM = {
+0xB5,0x62,0x06,0x09,0x0D,0x00,0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x01,0x19,0x98  
+};
+
+void revertUbloxToDefaultConfig()
+{
+  sprintf(outstring,"revertUbloxToDefaultConfig");
+  logOut(2,outstring); 
+  for(int i = 0; i < sizeof(UBLOX_REVERT_SAVED); i++) {                        
+    ss.write( pgm_read_byte(UBLOX_REVERT_SAVED + i) );
+    delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
+  }  
+  smartDelay(50);
+}
+
 /*****************************************************************************! 
   @brief  resetPowerSaveMode() : reset all power save stuff to a neutral status
   @details 
   @return void
 *****************************************************************************/
 void resetPowerSaveMode(){
+  sprintf(outstring,"resetPowerSaveMode");
+  logOut(2,outstring);
 
-  logOut(2,(char *)"resetPowerSaveMode: cont. mode, PM2 to fast, GPS HF to ON");
-  // UKHAS power save mode -> continuous mode
-  configureUKhasCoM();
-
-  // PM2
-  configurePM2Fast();
-
-  // switch on GPS HF electronics
-  configureUKhasGPSon(); 
+  #if defined NEO_6M || defined NEO_M8N
+    /*
+    logOut(2,(char *)"resetPowerSaveMode: cont. mode, PM2 to fast, GPS HF to ON");
+    // UKHAS power save mode -> continuous mode
+    configureUKhasCoM();
+  
+    // PM2
+    configurePM2Fast();
+  
+    // switch on GPS HF electronics
+    configureUKhasGPSon(); 
+    */
+   
+    //revertUbloxToLastSavedConfig(); // revert Ublox GPS to last saved configuration
+    revertUbloxToDefaultConfig(); // revert Ublox to default configuration
+  #endif
 }
 
 /*****************************************************************************! 
@@ -1104,6 +1158,8 @@ void resetPowerSaveMode(){
 *****************************************************************************/
 void configurePowerSaveMode(bool switchON)
 {
+  sprintf(outstring,"configurePowerSaveMode to %d",wData.PowerSaveMode);
+  logOut(2,outstring);
   if(switchON){  
     #ifdef NEO_6M
       if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
@@ -1112,7 +1168,6 @@ void configurePowerSaveMode(bool switchON)
         configureGpsMessages(); // working from gpsTest
         sprintf(wData.actConfigString,"%s2.configGPSMsg\n", wData.actConfigString);
         wData.linesInConfigString++;
-        wData.lines
 
         // configure GPS for "pedestrian" mode: good accuracy at slow speeds
         smartDelay(50); // give GPS some time to start up
@@ -1177,8 +1232,22 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(500); // give GPS some time to stabilize data
       }  
     #endif
+
+    #ifdef ATGM336H // to be used for chinese ATGM336H module
+      if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
+        //NMEA sentences off other than GGA; gll; rmc
+        char pcas03[] = "$PCAS03,1,1,0,0,1,0,0,0,0,0,,,0,0*03\r\n";	/* NMEA command, write(fd, cmdbuf, strlen(cmdbuf)); */
+        ss.write(pcas03, strlen(pcas03));
+        //turn on GPS, Beidou, Glonass
+        char pcas04[] = "$PCAS04,7*1E\r\n";	/* NMEA command, write(fd, cmdbuf, strlen(cmdbuf)); */
+        ss.write(pcas04, strlen(pcas04));
+        // dynamic model: pedestrian
+        char pcas11[] = "$PCAS11,2*1F\r\n";	/* NMEA command, write(fd, cmdbuf, strlen(cmdbuf)); */
+        ss.write(pcas11, strlen(pcas11));
+      }
+    #endif   
   }
-  else{ // switch off
+  else{ // switch off 
     #ifdef NEO_M8N
       if(wData.PowerSaveMode == MID){
         configurePM2Slow();
@@ -1190,12 +1259,25 @@ void configurePowerSaveMode(bool switchON)
         smartDelay(100); // give GPS some time to process
         }
     #endif 
+
     #ifdef NEO_6M
        if(wData.PowerSaveMode == MAX){
         configurePM2Slow();
         delay(50); // wait a bit for gps to adapt to new settings
       }
     #endif
+
+    #ifdef ATGM336H // to be used for chinese ATGM336H module
+      if((wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
+        // receiver standby mode
+        //char cmdbuf[] = "$PCAS12,10*2F\r\n";	// for 10 seconds
+        //char cmdbuf[] = "$PCAS12,8*16\r\n";	  // for 8 seconds
+        char cmdbuf[] = "$PCAS12,18*27\r\n";	// for 18 seconds
+        //char cmdbuf[] = "$PCAS12,20*2C\r\n";	// for 20 seconds
+        //char cmdbuf[] = "$PCAS12,28*24\r\n";	// for 28 seconds
+        ss.write(cmdbuf, strlen(cmdbuf));
+      }
+    #endif 
   }  
 }
 
@@ -1317,6 +1399,8 @@ void setup()
   uint32_t size_wData = sizeof(wData);
   sprintf(outstring,"Size of wData: %d bytes. Remaining RTC Memory: %d bytes", size_wData, 4096-size_wData); 
   logOut(2,outstring);
+  sprintf(outstring,"Power Save Mode %d ", wData.PowerSaveMode); 
+  logOut(2,outstring);
 
   sprintf(wData.actConfigString,"free RTC: %d\n", 4096-size_wData);   // also pre-sets wData.actConfigString and deletes old content
   wData.linesInConfigString = 1;
@@ -1336,7 +1420,7 @@ void setup()
   //  26, 13          <<< For 26MHz XTAL
   //  24, 12          <<< For 24MHz XTAL
 
-  #if defined NEO_M8N || defined NEO_6M
+  #if defined NEO_M8N || defined NEO_6M || defined ATGM336H
     if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
       cpu_freq_mhz = 80;
       setCpuFrequencyMhz(cpu_freq_mhz);
@@ -1353,12 +1437,12 @@ void setup()
   wData.linesInConfigString++;
 
 
-  #ifdef READ_PREFERENCES
-    // get data from EEPROM using preferences library in readonly mode
-    sprintf(outstring," before readPreferences()");
-    logOut(2,outstring);
-    readPreferences();
-  #endif
+  //#ifdef READ_PREFERENCES
+  //  // get data from EEPROM using preferences library in readonly mode
+  //  sprintf(outstring," before readPreferences()");
+  //  logOut(2,outstring);
+  //  readPreferences();
+  //#endif
 
   // increment start counter
   wData.startCounter++;
@@ -1394,6 +1478,13 @@ void setup()
     // show welcome message on ePaper
     sprintf(show,"AnchorAlarm %s", VERSION);
     showWelcomeMessage(true, show, 1);
+
+    #ifdef READ_PREFERENCES
+      // get data from EEPROM using preferences library in readonly mode
+      sprintf(outstring," before readPreferences()");
+      logOut(2,outstring);
+      readPreferences();
+    #endif
 
     // configure GPS for startup
     configurePowerSaveMode(true);
@@ -1463,6 +1554,8 @@ void setup()
     }
   }  // if MODE_STARTED
   else{ // all other modes
+    // ensure that GPS ist started correctly. specifically in MAX: it has to be switched on
+    configurePowerSaveMode(true); // true: switch on
     // check GPS. If no fix: check if powerSaveMode is > MIN (MID or MAX) => set to MIN and try some more
     if(startupGPSSafely(120, 60)){
       sprintf(outstring,"setup: GPS Fix OK");

@@ -5,9 +5,9 @@ At anchor we like to use an anchor alarm app on the mobile phone. Unfortunately 
 
 Thatˋs why I have come up with an alternative, an GPS based anchor alarm with LiPo battery and an ePaper display. It is run by power saving variant of the ESP32 SOC, the Lolin Lite.
 
-<img src="./pictures/PXL_20260204_162428316.jpg" width="300">
-<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="300">
-<img src="./pictures/PXL_20260204_164919321.jpg" width="300">
+| Overview | Routine Screen | Size Comparison
+| :--- | :--- | :-- |
+|<img src="./pictures/PXL_20260204_162428316.jpg" width="300">|<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="300">|<img src="./pictures/PXL_20260204_164919321.jpg" width="300">|
 
 Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.
@@ -90,7 +90,8 @@ The following pictures show performance of the GPS with NEO-M8N and ARGM336H mod
 |:---|:---|
 |<img src="./pictures/2026-02-24 NEO-M8N MIN.jpg" width="300">|<img src="./pictures/2026-02-24 ATGM336 MIN.jpg" width="300">|
 |<img src="./pictures/2026-02-24 NEO-M8N MID.jpg" width="300">|<img src="./pictures/2026-02-24 ATGM336 MID.jpg" width="300">|
-The NEO-M8N limits itself to 12 satellites, ATGM336H uses as many satellites as it can get. In both cases the results are excellent for "MIN", with a somewhat larger distribution for the ATGM336H. The distribution is a bit wider in the "MID" mode, but still pretty good. The numbers in the third row from the bottom show the standard deviationof the data points in X and Y direction.
+
+The NEO-M8N limits itself to 12 satellites, ATGM336H uses as many satellites as it can get. In both cases the results are excellent for "MIN", with a somewhat larger distribution for the ATGM336H. The distribution is a bit wider in the "MID" mode, but still pretty good. The numbers in the third row from the bottom show the standard deviation of the data points in X and Y direction.
 
 ## Alert condition 
 An alert is triggered if any of the following conditions is true:

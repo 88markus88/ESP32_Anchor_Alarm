@@ -84,6 +84,14 @@ NEO-6M uses only GPS satellites, and has a slightly higher power consumption tha
 
 ATGM336H uses GPS, Beidou and Glonass constellations. However, the position walk in my tests was significantly larger than for the NEO-M8N. Power saving options are fairly limited: NMEA messages can be reduced, and "pedestrian" mode can be used. The power saving option had no effect. Consequently this module has the highest power consumption of all three GPS modules. However, the GPS accuracy is good if the conditions are good and an active antenna is used instead of the mini-antenna supplied with the module. When the original antenna is used, acquisiton times can be many minutes if the reception is not good. Prices are low, comparable to the NEO-6M.
 
+### GPS Performance
+The following pictures show performance of the GPS with NEO-M8N and ARGM336H modules. The data have been collected in a park, with some trees above. Acquistion was a few seconds in every case. Power save mode "MIN" has been used in the first row, "MID" in the second row. After collecting for a few minutes I have moved about 20 meters to get the ship symbol away from the data point.
+|Ublox NEO-M8N| ATGM336H |
+|---|---|
+|<img src="./pictures/2026-02-24 NEO-M8N MIN.jpg" width="200">|<img src="./pictures/2026-02-24 ATGM336 MIN.jpg" width="200">|
+|<img src="./pictures/2026-02-24 NEO-M8N MID.jpg" width="200">|<img src="./pictures/2026-02-24 ATGM336 MID.jpg" width="200">|
+The NEO-M8N limits itself to 12 satellites, ATGM336H uses as many satellites as it can get. In both cases the results are excellent for "MIN", with a somewhat larger distribution for the ATGM336H. The distribution is a bit wider in the "MID" mode, but still pretty good. The numbers in the third row from the bottom show the standard deviationof the data points in X and Y direction.
+
 ## Alert condition 
 An alert is triggered if any of the following conditions is true:
 - The present boat positon if too far from the original anchor position. Mathematical: (alert value) > (alert threshold). The alert value is accumulated over multiple runs: 10% out of the circle adds 1, 30% out of the circle adds 3 and so on. If the alert threshold is 10, an alert is triggered if the boat is out of the safe circle by more than 100% of the circle radius, or three times in sequence more than 33.3%, or ten times in sequence more than 10%. Whenever the boat returns into the safe circle, alert value is reset to 0.

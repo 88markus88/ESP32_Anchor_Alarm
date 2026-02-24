@@ -20,6 +20,7 @@ extern RTC_DATA_ATTR uint32_t bgndColor;
 
 //*************** global global variables ******************/
 extern char outstring[maxLOG_STRING_LEN];
+//extern HardwareSerial gpsSerial(1); // The serial connection to the GPS device
 
 enum mainLoopMode {
   MODE_STARTED = 0,
@@ -138,6 +139,7 @@ void doParallelBuzzer(uint16_t number, uint16_t duration, uint16_t interval);
 void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLines);
 void calcGraphStdDevXY();
 boolean gpsReEstablished(int32_t secs);
+void smartDelay(unsigned long ms);
 
 boolean gpsTest();
 

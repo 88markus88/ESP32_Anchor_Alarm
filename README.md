@@ -5,9 +5,9 @@ At anchor we like to use an anchor alarm app on the mobile phone. Unfortunately 
 
 Thatˋs why I have come up with an alternative, an GPS based anchor alarm with LiPo battery and an ePaper display. It is run by power saving variant of the ESP32 SOC, the Lolin Lite.
 
-<img src="./pictures/PXL_20260204_162428316.jpg" width="300">
-<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="300">
-<img src="./pictures/PXL_20260204_164919321.jpg" width="300">
+| Overview | Routine Screen | Size Comparison
+| :--- | :--- | :-- |
+|<img src="./pictures/PXL_20260204_162428316.jpg" width="300">|<img src="./pictures/PXL_20260204_162439578.MP.jpg" width="300">|<img src="./pictures/PXL_20260204_164919321.jpg" width="300">|
 
 Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.
@@ -83,6 +83,15 @@ Note: in MID mode this module only uses GPS satellites, with somewhat reduced po
 NEO-6M uses only GPS satellites, and has a slightly higher power consumption than NEO-M8N. It also has good power saving options. It is significantly cheapter than the NEO-M8N, and absolutely sufficient if the receiving conditions are good (no mountains or houses around which cover a large part of the sky).
 
 ATGM336H uses GPS, Beidou and Glonass constellations. However, the position walk in my tests was significantly larger than for the NEO-M8N. Power saving options are fairly limited: NMEA messages can be reduced, and "pedestrian" mode can be used. The power saving option had no effect. Consequently this module has the highest power consumption of all three GPS modules. However, the GPS accuracy is good if the conditions are good and an active antenna is used instead of the mini-antenna supplied with the module. When the original antenna is used, acquisiton times can be many minutes if the reception is not good. Prices are low, comparable to the NEO-6M.
+
+### GPS Performance
+The following pictures show performance of the GPS with NEO-M8N and ARGM336H modules. The data have been collected in a park, with some trees above. Acquistion was a few seconds in every case. Power save mode "MIN" has been used in the first row, "MID" in the second row. After collecting for a few minutes I have moved about 20 meters to get the ship symbol away from the data point.
+|Ublox NEO-M8N| ATGM336H |
+|:---|:---|
+|<img src="./pictures/2026-02-24 NEO-M8N MIN.jpg" width="300">|<img src="./pictures/2026-02-24 ATGM336 MIN.jpg" width="300">|
+|<img src="./pictures/2026-02-24 NEO-M8N MID.jpg" width="300">|<img src="./pictures/2026-02-24 ATGM336 MID.jpg" width="300">|
+
+The NEO-M8N limits itself to 12 satellites, ATGM336H uses as many satellites as it can get. In both cases the results are excellent for "MIN", with a somewhat larger distribution for the ATGM336H. The distribution is a bit wider in the "MID" mode, but still pretty good. The numbers in the third row from the bottom show the standard deviation of the data points in X and Y direction.
 
 ## Alert condition 
 An alert is triggered if any of the following conditions is true:

@@ -66,12 +66,13 @@ Precision of position is better in MIN mode than in MAX mode - depending on the 
 
 ### Sleep Modes and Power Consumption
 Power consumption has been measured using a FNIRSI FN-058 USB Power Meter, and theoretical runtime calculated based on a 1800 mA LiPo battery.
-| Mode  | NEO-M8N |20s sleep| NEO-M8N |50s sleep|      
-|       | Power   |Endurance| Power   |Endurance|
-| ------| --------|---------|---------|---------|       
-| MIN   | 53.0 mA | 33.9 h  | 49.2 mA | 36.6 h  |
-| MID   | 39.5 mA | 45.6 h  | 38.8 mA | 47.4 h  | 
-| MAX   | 43.5 mA | 41.4 h  | 36.3 mA | 49.6 h  |
+
+NEO-M8N 
+| Mode  | Power (20s)|Endurance| Power (50s)|Endurance|
+| ------| --------   |---------|---------   |---------|       
+| MIN   | 53.0 mA    | 33.9 h  | 49.2 mA    | 36.6 h  |
+| MID   | 39.5 mA    | 45.6 h  | 38.8 mA    | 47.4 h  | 
+| MAX   | 43.5 mA    | 41.4 h  | 36.3 mA    | 49.6 h  |
 
 Power consumption for the NEO-6M module is slightly higher, for the ATGM336H still higher, with correspondingly shorter operation times. All modules exceed 24 hours of continuous operation. With a USB power supply connected it is of course infinite.
 

@@ -13,7 +13,7 @@ Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.
 - ePaper Display 1.54" with 200x200 resolution. Sufficiently large for the use case, very low power consumption and pretty good readabilty
 - 1800 mAh LiPo battery: sufficient for 30 hours of operation (measured power consumption is 60 mA on avarage)
-- NEO-6M GPS module
+- GPS module (Ublox NEO-6M, NEO-M8N or alternatively ATGM336H)
 - Optional: active GPS antenna
 - Rotary Encoder with button for settings
 - PCB board: I have recycled a board for the ePaper barograph that I built earlier. I had a few ones left over, all the required pins are exposed (some not properly labeled...)
@@ -63,6 +63,26 @@ Since the device has limited battery capacity, power saving is available. Thre m
 The effect of power saving (80 MHz) reduces the ESP32 power consumption to ca. 75 mA while not in deep sleep.<br>
 The power consumption of the NEO-M8N is reduced to 45 mA in "MIN" mode to 28 mA in "MAX" mode.<br>
 Precision of position is better in MIN mode than in MAX mode - depending on the quality of satellite data.
+
+### Sleep Modes and Power Consumption
+Power consumption has been measured using a FNIRSI FN-058 USB Power Meter, and theoretical runtime calculated based on a 1800 mA LiPo battery.
+
+NEO-M8N 
+| Mode  | Power (20s)|Endurance| Power (50s)|Endurance|
+| ------| --------   |---------|---------   |---------|       
+| MIN   | 53.0 mA    | 33.9 h  | 49.2 mA    | 36.6 h  |
+| MID   | 39.5 mA    | 45.6 h  | 38.8 mA    | 47.4 h  | 
+| MAX   | 43.5 mA    | 41.4 h  | 36.3 mA    | 49.6 h  |
+
+Power consumption for the NEO-6M module is slightly higher, for the ATGM336H still higher, with correspondingly shorter operation times. All modules exceed 24 hours of continuous operation. With a USB power supply connected it is of course infinite.
+
+### Additional Considerations
+NEO-M8N appears the best module of all three used: lowest power consumption which can be further reduced using the extensive power management options. It uses satellites from GPS, Beidou, Glonass and Galileo constellations - which means shorter acquisiton times and better fixes. It is also the most expensive module.
+Note: in MID mode this module only uses GPS satellites, with somewhat reduced position accuracy. In MIN and MAX mode it uses all three constellations of GPS satellites.
+
+NEO-6M uses only GPS satellites, and has a slightly higher power consumption than NEO-M8N. It also has good power saving options. It is significantly cheapter than the NEO-M8N, and absolutely sufficient if the receiving conditions are good (no mountains or houses around which cover a large part of the sky).
+
+ATGM336H uses GPS, Beidou and Glonass constellations. However, the position walk in my tests was significantly larger than for the NEO-M8N. Power saving options are fairly limited: NMEA messages can be reduced, and "pedestrian" mode can be used. The power saving option had no effect. Consequently this module has the highest power consumption of all three GPS modules. However, the GPS accuracy is good if the conditions are good and an active antenna is used instead of the mini-antenna supplied with the module. When the original antenna is used, acquisiton times can be many minutes if the reception is not good. Prices are low, comparable to the NEO-6M.
 
 ## Alert condition 
 An alert is triggered if any of the following conditions is true:

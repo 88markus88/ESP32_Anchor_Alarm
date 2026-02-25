@@ -1,4 +1,4 @@
-# ESP32_Anchor_Alarm
+# Battery operated ESP32 Anchor Alarm with ePaper Display 
 Anchor Alarm with LolinLite ESP32, GPS Module, ePaper Display and setting via rotary encoder
 
 At anchor we like to use an anchor alarm app on the mobile phone. Unfortunately that one has a few disadvantages: it uses up the battery quickly, and sometimes Android likes to stop the app for mysterious reasons, particularly if it is not in the front and the screen on. We could also use nachor alarms embedded in other onboard electronics (e.g. AIS), but I find that to inflexible and using too much energy from our precious house batteries.

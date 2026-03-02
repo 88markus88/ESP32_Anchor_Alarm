@@ -119,6 +119,7 @@ bool testRotaryEncoder = false;
 bool testGPSModule = false;
 bool testBuzzer = true;
 bool testDisplayModule = false;
+bool testBatteryVoltageReading = true;
 
 
 /**************************************************!
@@ -164,21 +165,28 @@ int readBatteryVoltage(float* percent, float* volt)
   logOut(2,outstring);
   */
 
-  esp_adc_cal_value_t efuse_config = esp_adc_cal_characterize(
-      ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, VREF, &adc_chars);
-  if (efuse_config != ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
-    //logOut(2, (char*)"ALERT, ADC calibration failed");
-    logOut(3, (char*)"Werkseitige ADC Curve-Fitting-Kalibrierung nicht verfügbar, nutze Default VREF.");
-  }
+  uint32_t vRef = VREF;
+  //uint32_t raw = analogRead(VOLTAGE_PIN);
 
-  millivolts1 = analogReadMilliVolts(VOLTAGE_PIN);
+  esp_adc_cal_value_t efuse_config = esp_adc_cal_characterize(
+      ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, vRef, &adc_chars);
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_TP) 
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_TP : Two-Point Calibration from eFuse");
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_VREF) 
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_VREF: eFuse Vref Used");
+  if (efuse_config == ESP_ADC_CAL_VAL_DEFAULT_VREF)
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_DEFAULT_VREF: Your Provided Default Vref Is Used");
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_TP_FIT)
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_TP_FIT: Curve fitting based on eFuse data");
+
+  millivolts1 = 2 * analogReadMilliVolts(VOLTAGE_PIN); // 1:1 divider, so multiply by two
 
   uint32_t raw = analogRead(VOLTAGE_PIN);
-  millivolts2 = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
+  millivolts2 = 2* esp_adc_cal_raw_to_voltage(raw, &adc_chars); // 1:1 divider, so multiply by two
   
-  sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld",
-    millivolts1, raw, millivolts2);
-  logOut(3,outstring);
+  sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld (default vRef: %ld) efuse_config: %ld",
+    millivolts1, raw, millivolts2, vRef, efuse_config);
+  logOut(2,outstring);
 
   // Original, works well on Lolin32
   readval = analogRead(VOLTAGE_PIN);// / 4096.0 * 7.23;      // LOLIN D32 (no voltage divider need already fitted to board.or NODEMCU ESP32 with 100K+100K voltage divider
@@ -194,9 +202,9 @@ int readBatteryVoltage(float* percent, float* volt)
   if (*volt > 4.19) *percent = 100;
   else if (*volt <= 3.50) *percent = 0;
 
-  //sprintf(outstring,"GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
-  //    VOLTAGE_PIN,readval, *volt,*percent);
-  //logOut(2,outstring);
+  sprintf(outstring, "presently used: GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
+      VOLTAGE_PIN,readval, *volt,*percent);
+  logOut(2,outstring);
   return(true);
 }
 
@@ -941,6 +949,10 @@ void setup()
     buzzer(1, 100,10);
     testWelcomeMessages();
   }
+
+  if(testBatteryVoltageReading){
+    readBatteryVoltage(&wData.batteryPercent, &wData.batteryVoltage);     
+  }  
 
   // Serial port for GPS module
   gpsSerial.begin(9600, SERIAL_8N1, RXPin, TXPin); // RX, TX

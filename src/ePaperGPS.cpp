@@ -371,7 +371,7 @@ void resetPowerSaveMode(HardwareSerial& gpsSerial)
     */
    
     //revertUbloxToLastSavedConfig(); // revert Ublox GPS to last saved configuration
-    revertUbloxToDefaultConfig(); // revert Ublox to default configuration
+    revertUbloxToDefaultConfig(gpsSerial); // revert Ublox to default configuration
   #endif
 }
 
@@ -387,6 +387,7 @@ void configurePowerSaveMode(HardwareSerial& gpsSerial, bool switchON)
   sprintf(outstring,"configurePowerSaveMode to %d",wData.PowerSaveMode);
   logOut(2,outstring);
   if(switchON){  
+    /*
     #ifdef NEO_6M
       if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
         // remove unnecessary NMEA messages to optimize GPS performance
@@ -417,8 +418,10 @@ void configurePowerSaveMode(HardwareSerial& gpsSerial, bool switchON)
         smartDelay(2000); // give GPS some time to start up
       }  
     #endif
+    */ 
 
-    #ifdef NEO_M8N 
+    // #ifdef NEO_M8N 
+    #if defined NEO_M8N || defined NEO_6M
       if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
         // remove unnecessary NMEA messages to optimize GPS performance
         smartDelay(50); // give GPS some time to start up
@@ -478,7 +481,8 @@ void configurePowerSaveMode(HardwareSerial& gpsSerial, bool switchON)
     #endif   
   }
   else{ // switch off 
-    #ifdef NEO_M8N
+    //#ifdef NEO_M8N
+    #if defined NEO_M8N || defined NEO_6M
       if(wData.PowerSaveMode == MID){
         configurePM2Slow(gpsSerial);
         delay(50); // wait a bit for gps to adapt to new settings
@@ -490,12 +494,14 @@ void configurePowerSaveMode(HardwareSerial& gpsSerial, bool switchON)
         }
     #endif 
 
+    /*
     #ifdef NEO_6M
        if(wData.PowerSaveMode == MAX){
         configurePM2Slow(gpsSerial);
         delay(50); // wait a bit for gps to adapt to new settings
       }
     #endif
+    */
     logOut(2,(char*)"before MID / MAX");
 
     #ifdef ATGM336H // to be used for chinese ATGM336H module

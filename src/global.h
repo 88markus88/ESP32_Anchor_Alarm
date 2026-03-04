@@ -49,7 +49,7 @@ enum powerSaveType{
 };
 
 // defaults
-#define d_anchorBearingDeg 45 
+#define d_anchorBearingDeg 40 
 #define d_anchorDistanceM  23
 #define d_alarmThreshold   10 
 #define d_alarmDistanceM   40  
@@ -140,6 +140,8 @@ void showWelcomeMessage(boolean clearScreen, char* nextMessage, uint16_t msgLine
 void calcGraphStdDevXY();
 boolean gpsReEstablished(int32_t secs);
 void smartDelay(unsigned long ms);
+void handleExt0Wakeup();
+uint32_t print_wakeup_reason(); 
 
 boolean gpsTest();
 

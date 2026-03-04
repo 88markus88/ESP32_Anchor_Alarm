@@ -143,11 +143,156 @@ void logOut(int logLevel, char* str)
   }
 }
 
+
+/**************************************************!
+   @brief    getChargeLevelFromVolts
+   @details  Function convert voltage to battery charge level
+   @details  see https://github.com/pangodream/18650CL/blob/master/src/Pangodream_18650_CL.cpp
+   @param    volts : battery voltage in volts
+   @return   int   : battery fill percentage as integer, 0..100
+***************************************************/
+
+int getChargeLevelFromVolts(double volts){
+  //Array with voltage - charge definitions
+  double _vs[] ={3.200,                                                     // 0
+    3.250, 3.300, 3.350, 3.400, 3.450, 3.500, 3.550, 3.600, 3.650, 3.700,   // 1-10
+    3.703, 3.706, 3.710, 3.713, 3.716, 3.719, 3.723, 3.726, 3.729, 3.732,   // 11-20
+    3.735, 3.739, 3.742, 3.745, 3.748, 3.752, 3.755, 3.758, 3.761, 3.765,   // 21-30
+    3.768, 3.771, 3.774, 3.777, 3.781, 3.784, 3.787, 3.790, 3.794, 3.797,   // 31-40
+    3.800, 3.805, 3.811, 3.816, 3.821, 3.826, 3.832, 3.837, 3.842, 3.847,   // 41-50
+    3.853, 3.858, 3.863, 3.868, 3.874, 3.879, 3.884, 3.889, 3.895, 3.900,   // 51-60
+    3.906, 3.911, 3.917, 3.922, 3.928, 3.933, 3.939, 3.944, 3.950, 3.956,   // 61-70
+    3.961, 3.967, 3.972, 3.978, 3.983, 3.989, 3.994, 4.000, 4.008, 4.015,   // 71-80
+    4.023, 4.031, 4.038, 4.046, 4.054, 4.062, 4.069, 4.077, 4.085, 4.092,   // 81-90
+    4.100, 4.111, 4.122, 4.133, 4.144, 4.156, 4.167, 4.178, 4.189, 4.200};  // 91-100
+
+ int idx = 50;
+ int prev = 0;
+ int half = 0;
+ if (volts >= 4.2){
+   sprintf(outstring,"getChargeLevelFromVolts converted %f [V] to %d [%%]", volts, 100);
+   logOut(2, outstring);
+   return 100;
+ }
+ if (volts <= 3.2){
+    sprintf(outstring,"getChargeLevelFromVolts converted %f [V] to %d [%%]", volts, 0);
+    logOut(2, outstring);
+   return 0;
+ }
+ while(true){
+   half = abs(idx - prev) / 2;
+   prev = idx;
+   if(volts >= _vs[idx]){
+     idx = idx + half;
+   }else{
+     idx = idx - half;
+   }
+   if (prev == idx){
+     break;
+   }
+  }
+  sprintf(outstring,"getChargeLevelFromVolts converted %f [V[] to %d [%%]", volts, idx);
+  logOut(2, outstring);
+  return idx;
+}
+
+/**************************************************!
+   @brief    readBatteryVoltage
+   @details  Function read battery voltage and percentage
+   @details  Uses 3 methods to measure and calculated values
+   @param    float* volts : battery voltage in volts
+   @param    float* percent : battery filling status in percent of full
+   @return   boolean true if calculation successful
+***************************************************/
+
+boolean readBatteryVoltage(float* percent, float* volt)
+{
+  uint32_t raw, millivolts1, millivolts2;
+
+  float voltArduino, voltESP, voltDirect;
+  float percentFit1, percentFit2, percent_direct, percentTable;
+
+  esp_adc_cal_characteristics_t adc_chars;
+
+  *percent = 100;
+  pinMode(VOLTAGE_PIN, INPUT);
+
+   uint32_t vRef = VREF; // default VREF for voltage measurement
+  //uint32_t raw = analogRead(VOLTAGE_PIN);
+
+   // Prüft, ob und welche eFuse-Daten Kalibrationsdaten vorhanden sind
+  esp_adc_cal_value_t efuse_config = esp_adc_cal_characterize(
+      ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, vRef, &adc_chars);
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_TP) 
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_TP : Two-Point Calibration from eFuse");
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_VREF) 
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_VREF: eFuse Vref Used");
+  if (efuse_config == ESP_ADC_CAL_VAL_DEFAULT_VREF)
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_DEFAULT_VREF: Your Provided Default Vref Is Used");
+  if (efuse_config == ESP_ADC_CAL_VAL_EFUSE_TP_FIT)
+    logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_TP_FIT: Curve fitting based on eFuse data");
+
+  // arduino method of voltage reading 
+  millivolts1 = 2 * analogReadMilliVolts(VOLTAGE_PIN); // 1:1 divider, so multiply by two
+  voltArduino = (float)millivolts1 / 1000.0;
+
+  // esp method of voltage reading
+  raw = analogRead(VOLTAGE_PIN);
+  millivolts2 = 2* esp_adc_cal_raw_to_voltage(raw, &adc_chars); // 1:1 divider, so multiply by two
+  voltESP = (float)millivolts2 / 1000.0;
+  
+  sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld (default vRef: %ld) efuse_config: %ld",
+    millivolts1, raw, millivolts2, vRef, efuse_config);
+  logOut(2,outstring);
+
+  // Original, works well on Lolin32
+  //raw = analogRead(VOLTAGE_PIN);// / 4096.0 * 7.23;      // LOLIN D32 (no voltage divider need already fitted to board.or NODEMCU ESP32 with 100K+100K voltage divider
+  voltDirect= (float)raw / 4096.0 * 7.23;
+
+  //float voltage = analogRead(39) / 4096.0 * 7.23;    // NODEMCU ESP32 with 100K+100K voltage divider added
+  //float voltage = analogRead(A0) / 4096.0 * 4.24;    // Wemos / Lolin D1 Mini 100K series resistor added
+  //float voltage = analogRead(A0) / 4096.0 * 5.00;    // Ardunio UNO, no voltage divider required
+
+  // select which voltage value to use
+  *volt= voltESP;
+
+  // original percent calculation from curve fitting
+  percentFit1 = 2808.3808 * pow(*volt, 4) - 43560.9157 * pow(*volt, 3) + 252848.5888 * pow(*volt, 2) - 650767.4615 * *volt + 626532.5703;
+  if(percentFit1<0) percentFit1 =0; // to ensure that the above formula does not produce negative values, as it does slightly above 3.5V
+  if (*volt > 4.19) percentFit1 = 100;
+  else if (*volt <= 3.50) percentFit1 = 0;
+
+  // Berechnung von reddit https://www.reddit.com/r/esp32/comments/1dybanl/measuring_battery_levels/
+  // percent calculation from another curve fitting
+  double v = *volt;
+  percentFit2 = -  144.9390 * v*v*v + 1655.8629 *v*v - 6158.8520 * v + 7501.3202;
+  percentFit2 = max((float)0.0, percentFit2);
+  percentFit2 = min((float)100.0, percentFit2);
+
+  // get percent value from table, based on measurement. See above.
+  percentTable = (float)getChargeLevelFromVolts(*volt);
+
+  sprintf(outstring, "Voltage from GPIO: %d  raw: %d voltESP: %3.2f voltArduino: %3.2f voltDirect: %3.2f percentFit1: %3.1f percentFit2 %3.1f percentTable: %3.1f",
+                                VOLTAGE_PIN,     raw,voltESP,       voltArduino,       voltDirect,       percentFit1,       percentFit2,      percentTable);
+  logOut(2,outstring);
+
+  // use percent3 from table
+  *percent = percentTable;
+  sprintf(outstring,"Used Volt: %3.2f Used Percent %3.1f", *volt, *percent);
+  logOut(2,outstring);
+  return(true);
+}
+
+
 /*************************** getBatteryCapacity ************************** */
-int readBatteryVoltage(float* percent, float* volt)
+/*
+int readBatteryVoltageOld(float* percent, float* volt)
 {
   uint16_t readval;
   uint32_t millivolts1, millivolts2;
+
+  float volt_arduino, volt_esp, volt_direct;
+  float percent_arduino, percent_esp, percent_direct, percent_table;
 
   esp_adc_cal_characteristics_t adc_chars;
 
@@ -155,15 +300,15 @@ int readBatteryVoltage(float* percent, float* volt)
   pinMode(VOLTAGE_PIN, INPUT);
 
   // Prüft, ob Curve Fitting (TP_FIT) eFuse-Daten vorhanden sind
-  /*
-  if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP_FIT) == ESP_OK) {
-     sprintf(outstring,"eFuse Kalibrierdaten (TP_FIT) vorhanden!");
-  } 
-  else {
-     sprintf(outstring,"Keine eFuse Kalibrierdaten gefunden. Nutze Default-Werte.\n");
-  }
-  logOut(2,outstring);
-  */
+
+  //if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP_FIT) == ESP_OK) {
+  //   sprintf(outstring,"eFuse Kalibrierdaten (TP_FIT) vorhanden!");
+  //} 
+  //else {
+  //   sprintf(outstring,"Keine eFuse Kalibrierdaten gefunden. Nutze Default-Werte.\n");
+  //}
+  //logOut(2,outstring);
+
 
   uint32_t vRef = VREF;
   //uint32_t raw = analogRead(VOLTAGE_PIN);
@@ -180,17 +325,26 @@ int readBatteryVoltage(float* percent, float* volt)
     logOut(2, (char*)"ESP_ADC_CAL_VAL_EFUSE_TP_FIT: Curve fitting based on eFuse data");
 
   millivolts1 = 2 * analogReadMilliVolts(VOLTAGE_PIN); // 1:1 divider, so multiply by two
+  volt_arduino = (float)millivolts2 / 1000.0;
 
   uint32_t raw = analogRead(VOLTAGE_PIN);
   millivolts2 = 2* esp_adc_cal_raw_to_voltage(raw, &adc_chars); // 1:1 divider, so multiply by two
+  volt_esp = (float)millivolts2 / 1000.0;
   
   sprintf(outstring,"millivolts1: %ld raw: %ld, millivolts2: %ld (default vRef: %ld) efuse_config: %ld",
     millivolts1, raw, millivolts2, vRef, efuse_config);
   logOut(2,outstring);
 
+  // Berechnung von reddit https://www.reddit.com/r/esp32/comments/1dybanl/measuring_battery_levels/
+  double v = (double)millivolts2 / 1000.0;
+  double percent2 = -  144.9390 * v*v*v + 1655.8629 *v*v - 6158.8520 * v + 7501.3202;
+  percent2 = max(0.0, percent2);
+  percent2 = min(100.0, percent2);
+
   // Original, works well on Lolin32
   readval = analogRead(VOLTAGE_PIN);// / 4096.0 * 7.23;      // LOLIN D32 (no voltage divider need already fitted to board.or NODEMCU ESP32 with 100K+100K voltage divider
-  *volt= (float)readval / 4096.0 * 7.23;
+  volt_direct= (float)readval / 4096.0 * 7.23;
+  *volt= volt_direct;
   //float voltage = analogRead(39) / 4096.0 * 7.23;    // NODEMCU ESP32 with 100K+100K voltage divider added
   //float voltage = analogRead(A0) / 4096.0 * 4.24;    // Wemos / Lolin D1 Mini 100K series resistor added
   //float voltage = analogRead(A0) / 4096.0 * 5.00;    // Ardunio UNO, no voltage divider required
@@ -202,12 +356,19 @@ int readBatteryVoltage(float* percent, float* volt)
   if (*volt > 4.19) *percent = 100;
   else if (*volt <= 3.50) *percent = 0;
 
-  sprintf(outstring, "presently used: GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f\n",
-      VOLTAGE_PIN,readval, *volt,*percent);
+  int percent3 = getChargeLevelFromVolts(*volt);
+
+  sprintf(outstring, "presently used: GPIO: %d  readval: %d Voltage: %3.2f Percent: %3.1f Percent2 %3.1f Percent3: %d\n",
+      VOLTAGE_PIN,readval, *volt,*percent, percent2, percent3);
   logOut(2,outstring);
+
+  // use volt from simplified calculation
+  *volt = *volt;
+  // use percent3 from table
+  *percent = (float)percent3;
   return(true);
 }
-
+*/
 
 /**************************************************!
    @brief    handleButtonInterrupt()
@@ -861,7 +1022,7 @@ void testWelcomeMessages()
 *****************************************************************************/
 void setup()
 {
-  uint32_t cpu_freq_mhz;
+  uint32_t cpu_freq_mhz, ret;
   char show[30];
 
   startTimeMillis = millis(); // remember time when woken up
@@ -871,6 +1032,10 @@ void setup()
   sprintf(outstring,"* %s %s - %s ",PROGNAME, VERSION, BUILD_DATE);
   logOut(2,outstring);
   logOut(2,(char*)"**********************************************************");
+
+  ret = print_wakeup_reason(); // determine reason for wakeup
+  if(ret == ESP_SLEEP_WAKEUP_EXT0)
+    handleExt0Wakeup();
 
   //sprintf(show,"AnchorAlarm %s", VERSION);
   //showWelcomeMessage(true, show, 1);
@@ -1043,17 +1208,23 @@ void setup()
     // ensure that GPS ist started correctly. specifically in MAX: it has to be switched on
     configurePowerSaveMode(gpsSerial, true); // true: switch on
     // check GPS. If no fix: check if powerSaveMode is > MIN (MID or MAX) => set to MIN and try some more
-    if(startupGPSSafely(gpsSerial, 120, 60)){
-      sprintf(outstring,"setup: GPS Fix OK");
+    if(wData.buttonPressed){
+      sprintf(outstring,"Wakeup due to button pressed. Do not wait for GPS in setup(), goto menu directly");
       logOut(2, outstring);
     }
     else{
-      sprintf(outstring,"setup: GPS Fix NOT OK");
-      logOut(2, outstring);
-      sprintf(show,"!!No GPS Fix!!");
-      showWelcomeMessage(false, show, 1);
-      buzzer(2, 200,100);
-      smartDelay(1000);
+      if(startupGPSSafely(gpsSerial, 120, 60)){
+        sprintf(outstring,"setup: GPS Fix OK");
+        logOut(2, outstring);
+      }
+      else{
+        sprintf(outstring,"setup: GPS Fix NOT OK");
+        logOut(2, outstring);
+        sprintf(show,"!!No GPS Fix!!");
+        showWelcomeMessage(false, show, 1);
+        buzzer(2, 200,100);
+        smartDelay(1000);
+      }
     }
   }
 
@@ -1161,15 +1332,17 @@ boolean handleParamChange(int trianglePos)
   switch(trianglePos){
     case 0: // anchor bearing
       {
-        int64_t encoderPos = encoder.getCount();
+        int64_t encoderPos = -encoder.getCount();
         if(encoderPos != 0){
-          wData.anchorBearingDeg += -encoderPos * 5; // each step is 5 degrees
+          wData.anchorBearingDeg += encoderPos * 5.0/2; // each step is 5 degrees. But: always double steps
+          wData.anchorBearingDeg = (int)wData.anchorBearingDeg  - ((int)wData.anchorBearingDeg % 5); // align to 5er steps
           if(wData.anchorBearingDeg < 0)
             wData.anchorBearingDeg += 360;
           wData.anchorBearingDeg = ((int)wData.anchorBearingDeg) % 360; // wrap around
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed
           wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
-          sprintf(outstring,"handleParamChange: Anchor bearing changed to %3.0f degrees", wData.anchorBearingDeg);
+          sprintf(outstring,"handleParamChange: Anchor bearing changed to %3.0f degrees (encoder: %ld)", 
+            wData.anchorBearingDeg, encoderPos);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -1178,14 +1351,16 @@ boolean handleParamChange(int trianglePos)
       break;
     case 1: // anchor distance
       {
-        int64_t encoderPos = encoder.getCount();
-        if(encoderPos != 0){
-          wData.anchorDistanceM += -encoderPos; // each step is 1 meter
+        int64_t encoderPos64 = -encoder.getCount();
+        if(encoderPos64 != 0){
+          float encoderPos = (float)encoderPos64/2.0;
+          wData.anchorDistanceM += encoderPos; // each step is 1 meter. But: always double steps
           if(wData.anchorDistanceM < 5)
-            wData.anchorDistanceM = 5; // minimum 5 meters
+            wData.anchorDistanceM = 1; // minimum 1 meters
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
-          sprintf(outstring,"handleParamChange: Anchor distance changed to %3.0f meters", wData.anchorDistanceM);
+          sprintf(outstring,"handleParamChange: Anchor distance changed to %3.0f meters (encoder: %f)", 
+            wData.anchorDistanceM, encoderPos);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -1194,13 +1369,14 @@ boolean handleParamChange(int trianglePos)
       break;
     case 2: // alarm count
       {
-        int64_t encoderPos = encoder.getCount();
+        int64_t encoderPos = -encoder.getCount();
         if(encoderPos != 0){
-          wData.alarmThreshold += -encoderPos; // each step is 1
+          wData.alarmThreshold += encoderPos* 1/2; // each step is 1 meter. But: always double steps
           if(wData.alarmThreshold < 1)
             wData.alarmThreshold = 1; // minimum 1
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
-          sprintf(outstring,"handleParamChange: Alarm count changed to %ld", wData.alarmThreshold);
+          sprintf(outstring,"handleParamChange: Alarm count changed to %ld (encoder: %ld)", 
+            wData.alarmThreshold, encoderPos);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -1209,14 +1385,16 @@ boolean handleParamChange(int trianglePos)
       break;
     case 3: // alarm distance
       {
-        int64_t encoderPos = -encoder.getCount();
-        if(encoderPos != 0){
-          wData.alarmDistanceM += encoderPos; // each step is 1 meter
+        int64_t encoderPos64 = -encoder.getCount();
+        if(encoderPos64 != 0){
+          float encoderPos = (float)encoderPos64/2.0;
+          wData.alarmDistanceM += encoderPos; // each step is 1 meter. But: always double steps
           if(wData.alarmDistanceM < 1)
             wData.alarmDistanceM = 1; // minimum 1 meter
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
-          sprintf(outstring,"handleParamChange: Alarm distance changed to %3.0f meters", wData.alarmDistanceM);
+          sprintf(outstring,"handleParamChange: Alarm distance changed to %3.0f meters (encoder: %f)", 
+            wData.alarmDistanceM, encoderPos);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -1226,18 +1404,18 @@ boolean handleParamChange(int trianglePos)
     case 4: // sleep time
       {
         int64_t encoderPos = -encoder.getCount();
-        encoder.clearCount(); // experimental: can avoid double action every time?
         if(encoderPos != 0){
-          //wData.targetMeasurementIntervalSec += encoderPos; // each step is 1 seconds. Immer doppelt...
+          wData.targetMeasurementIntervalSec += encoderPos* 1/2; // each step is 1 meter. But: always double steps
           // einfach nur auf +/- dämpft das besser
-          if(encoderPos > 0)
-            wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec + 1; 
-          else if(encoderPos < 0)
-            wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec - 1; 
+          //if(encoderPos > 0)
+          //  wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec + 1; 
+          //else if(encoderPos < 0)
+          //  wData.targetMeasurementIntervalSec = wData.targetMeasurementIntervalSec - 1; 
           if(wData.targetMeasurementIntervalSec < 0)
             wData.targetMeasurementIntervalSec = 0; // minimum 0 second
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
-          sprintf(outstring,"handleParamChange: targetMeasurementIntervalSec to %ld [s]", wData.targetMeasurementIntervalSec);
+          sprintf(outstring,"handleParamChange: targetMeasurementIntervalSec to %ld [s] (encoder: %ld)", 
+            wData.targetMeasurementIntervalSec, encoderPos);
           logOut(2, outstring);
           encoder.setCount(0); // reset encoder count
           drawInputData(); // redraw input data
@@ -1351,7 +1529,8 @@ void clearGraphBuffer(int callerID)
 {
   sprintf(outstring,"clearing data buffer. Caller: %d", callerID);
   logOut(2,outstring);
-  wData.drawCount = 0;
+  wData.drawCount = 0;    // no. of points in draw buffer
+  // wData.startCounter = 0; // no of measurements. not resetted, seems better
   wData.graphBufferClearingNeeded = false;
   for (int i=0; i<maxDrawBufferLen; i++){
     wData.drawBuffer[i][0] = 0;
@@ -1437,9 +1616,10 @@ void doRoutineWork()
 
   // determine reason for wakeup. if timer wakeup: continue with measurements. 
   // if EXT0 wakeup (button pressed): handleExt0Wakeup()
-  ret = print_wakeup_reason(); // determine reason for wakeup
-  if(ret == ESP_SLEEP_WAKEUP_EXT0)
-    handleExt0Wakeup();
+  // Moved to setup() 04.03.26
+  //ret = print_wakeup_reason(); // determine reason for wakeup
+  //if(ret == ESP_SLEEP_WAKEUP_EXT0)
+  //  handleExt0Wakeup();
 
   readBatteryVoltage(&wData.batteryPercent, &wData.batteryVoltage);                  // Auslesen der Batteriespannung  
 

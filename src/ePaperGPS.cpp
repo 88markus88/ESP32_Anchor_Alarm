@@ -529,7 +529,7 @@ void configurePowerSaveMode(HardwareSerial& gpsSerial, bool switchON)
 /*****************************************************************************! 
   @brief  startupGPSSafely()
   @details checks if we have a fix, if not tries to re-establish
-  @details if that does not work within first time, reduce powerSaveMode to MIN and try again
+  @details if that does not work within first time, reduce /revert powerSaveMode to MIN and try again
   @details if that does not work: message and return
   @param uint32_t  secs1: first waiting time for GPS fix until reduction of power save mode
   @param uint32_t  secs2: second waiting time for GPS fix after reduction of power save mode

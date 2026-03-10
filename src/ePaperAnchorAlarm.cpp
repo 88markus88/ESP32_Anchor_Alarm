@@ -1047,7 +1047,7 @@ void setup()
   sprintf(outstring,"Power Save Mode %d ", wData.PowerSaveMode); 
   logOut(2,outstring);
 
-  sprintf(wData.actConfigString,"free RTC: %d\n", 4096-size_wData);   // also pre-sets wData.actConfigString and deletes old content
+  sprintf(wData.actConfigString,"freeRTC:%d\n", 4096-size_wData);   // also pre-sets wData.actConfigString and deletes old content
   wData.linesInConfigString = 1;
 
   // get and re-set CPU clock speed
@@ -1065,6 +1065,15 @@ void setup()
   //  26, 13          <<< For 26MHz XTAL
   //  24, 12          <<< For 24MHz XTAL
 
+  #ifdef NEO_M8N
+    char gpsType[]="NEO-M8N";
+  #endif
+    #ifdef NEO_6M
+    char gpsType[]="NEO_6M";
+  #endif
+  #ifdef ATGM336H
+    char gpsType[]="ATGM336";
+  #endif
   #if defined NEO_M8N || defined NEO_6M || defined ATGM336H
     if((wData.PowerSaveMode == MIN) ||(wData.PowerSaveMode == MID)||(wData.PowerSaveMode == MAX)){
       cpu_freq_mhz = 80;
@@ -1078,7 +1087,7 @@ void setup()
   
   sprintf(outstring,"New Frequencies: CPU: %ld MHz XTAL: %ld MHz ABP: %ld Hz", CPUFreq, XTALFreq, ABPFreq);
   logOut(2,outstring);
-  sprintf(wData.actConfigString,"%sCPU: %ld MHz\n", wData.actConfigString, cpu_freq_mhz);
+  sprintf(wData.actConfigString,"%s%s CPU:%ldMHz\n", wData.actConfigString, gpsType, cpu_freq_mhz);
   wData.linesInConfigString++;
 
 

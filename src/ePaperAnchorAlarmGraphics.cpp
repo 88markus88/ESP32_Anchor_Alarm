@@ -695,7 +695,7 @@ void drawWatchScreen(){
     if(wData.verbosity == HI){
       x=0; y=2 * HEADER_FONT_SIZE;
       display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.anchorLat,wData.anchorLon);
+      sprintf(outstring,"%6.5f %6.5f",wData.anchorLat,wData.anchorLon);
       display.print(outstring);
 
       x=0; y=3 * HEADER_FONT_SIZE;
@@ -770,7 +770,7 @@ void drawWatchScreen(){
 
       x=0; y=SCREEN_HEIGHT - 1;
       display.setCursor(x, y);
-      sprintf(outstring,"%6.6f %6.6f",wData.actLat,wData.actLon);
+      sprintf(outstring,"%6.5f %6.5f",wData.actLat,wData.actLon);
       display.print(outstring);
     } // verbosity HI
     

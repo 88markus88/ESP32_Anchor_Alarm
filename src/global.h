@@ -84,7 +84,8 @@ struct measurementData
   bool preferencesChanged;     // flag to indicate that a preference has been changed
   bool powerSaveChanged;       // flag to indicate that power save mode has changed
   bool graphBufferClearingNeeded; // flag to indicate that graphics buffer must be cleared
-
+  bool newAnchorPosNeeded;     // flag to indicate that anchor position needs to be updated
+ 
   int32_t targetMeasurementIntervalSec; // sleep time target in seconds, controls the measurement
   char actConfigString[200];  // shows info about current configuration
   uint16_t linesInConfigString; // number of lines contained in config string

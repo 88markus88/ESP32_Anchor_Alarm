@@ -1212,6 +1212,8 @@ void setup()
       Serial.print(F(", "));
       Serial.println(anchorLon, 6);
     }
+    // if fresh startup: need new anchor position for sure
+    wData.newAnchorPosNeeded = true;
   }  // if MODE_STARTED
   else{ // all other modes
     // ensure that GPS ist started correctly. specifically in MAX: it has to be switched on
@@ -1350,6 +1352,7 @@ boolean handleParamChange(int trianglePos)
           wData.anchorBearingDeg = ((int)wData.anchorBearingDeg) % 360; // wrap around
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed
           wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
+          wData.newAnchorPosNeeded = true; //change that makes update of anchor position necessary
           sprintf(outstring,"handleParamChange: Anchor bearing changed to %3.0f degrees (encoder: %ld)", 
             wData.anchorBearingDeg, encoderPos);
           logOut(2, outstring);
@@ -1368,6 +1371,7 @@ boolean handleParamChange(int trianglePos)
             wData.anchorDistanceM = 1; // minimum 1 meters
           wData.preferencesChanged = true; // flag to indicate that a preference value has been changed  
           wData.graphBufferClearingNeeded = true; //change that makes clearing of graph buffer necessary
+          wData.newAnchorPosNeeded = true; //change that makes update of anchor position necessary
           sprintf(outstring,"handleParamChange: Anchor distance changed to %3.0f meters (encoder: %f)", 
             wData.anchorDistanceM, encoderPos);
           logOut(2, outstring);
@@ -1719,7 +1723,7 @@ void doRoutineWork()
           wData.currentMode = MODE_RUNNING; // go to measurement mode
           // get anchor position, project it and clear graph buffer if not yet available
           //if(wData.actLat < 0.01 && wData.actLon < 0.01){
-          if(wData.anchorLat < 0.01 && wData.anchorLon < 0.01){  
+          if((wData.anchorLat < 0.01 && wData.anchorLon < 0.01)||(wData.newAnchorPosNeeded)){  
             getGPSStartPosition(&wData.actLat, &wData.actLon); // get averaged boat start position from GPS
             sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting via timer. Current GPS position Lat: %6.4f Lon: %6.4f", 
                 wData.actLat, wData.actLon);  
@@ -1784,11 +1788,20 @@ void doRoutineWork()
             sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Current GPS position Lat: %6.4f Lon: %6.4f", 
                 wData.actLat, wData.actLon);  
             logOut(2, outstring);
-            // project anchor distance and bearing from start position to get anchor position
-            gps_offset(wData.actLat, wData.actLon, wData.anchorDistanceM, wData.anchorBearingDeg, &wData.anchorLat, &wData.anchorLon);
-            sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor position set to Lat: %6.4f Lon: %6.4f", 
+            if(wData.newAnchorPosNeeded){
+              // project anchor distance and bearing from start position to get anchor position
+              gps_offset(wData.actLat, wData.actLon, wData.anchorDistanceM, wData.anchorBearingDeg, &wData.anchorLat, &wData.anchorLon);
+              sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor position set to Lat: %6.4f Lon: %6.4f", 
                 wData.anchorLat, wData.anchorLon);
-            logOut(2, outstring);
+              logOut(2, outstring);
+              wData.newAnchorPosNeeded = false;
+            }
+            else
+            {
+              sprintf(outstring,"doRoutineWork: MODE_CHANGEPARAM: Exiting. Anchor unchanged at Lat: %6.4f Lon: %6.4f", 
+              wData.anchorLat, wData.anchorLon);
+              logOut(2, outstring);
+            }
             //initialize draw buffer
             if(wData.graphBufferClearingNeeded)
               clearGraphBuffer(1);

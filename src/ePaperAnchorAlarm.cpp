@@ -10,7 +10,7 @@
 #include "esp_sleep.h"
 #include "driver/rtc_io.h"
 
-#include <SimpleTimer.h>        // Simple Timer, used instead of Blynk timer for virtuino
+#include <lib/SimpleTimer.h>        // Simple Timer, used instead of Blynk timer for virtuino
 SimpleTimer gpsTimer;
 int gpsTimerHandle=1;
 

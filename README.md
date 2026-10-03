@@ -12,7 +12,7 @@ Thatˋs why I have come up with an alternative, an GPS based anchor alarm with L
 Main components:
 - Lolin Lite ESP32: optimized for battery operation while still being inexpensive. It is optimized for battery operation, the module has a very low consumption in deep sleep.
 - ePaper Display 1.54" with 200x200 resolution. Sufficiently large for the use case, very low power consumption and pretty good readabilty
-- 1800 mAh LiPo battery: sufficient for 30 hours of operation (measured power consumption is 60 mA on avarage)
+- 1800 mAh LiPo battery 52x34x10 mm: sufficient for 30 hours of operation (measured power consumption is 60 mA on avarage)
 - GPS module (Ublox NEO-6M, NEO-M8N or alternatively ATGM336H)
 - Optional: active GPS antenna
 - Rotary Encoder with button for settings
